@@ -16,9 +16,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, entity := range msg.GetEntity() {
-		fmt.Printf("Entity: %+v\n", entity.GetTripUpdate())
-	}
+	fmt.Println(msg.String())
 }
 
 func getGtfsRealtime() (*pb.FeedMessage, error) {
