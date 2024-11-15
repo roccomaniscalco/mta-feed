@@ -10,6 +10,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var MYRTLE_WYCKOFF_L_STOP_ID = "L17N"
+
 func main() {
 	msg, err := getGtfsRealtime()
 	if err != nil {
