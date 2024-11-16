@@ -4,35 +4,82 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"mta-feed/gtfs-realtime"
+	"mta-feed/pb"
 	"net/http"
+	"os"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
-var STOP_ID = "L17S" // canarsie
-// var STOP_ID = "L17N" // 8 av
+const (
+	L_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
+	M_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm"
+)
+
+type line struct {
+	feedUrl string
+	stops   []stop
+}
+
+type stop struct {
+	stopId string
+}
+
+var lines = []line{
+	{
+		feedUrl: L_URL,
+		stops: []stop{
+			{
+				stopId: "L17N",
+			},
+			{
+				stopId: "L17S",
+			},
+		},
+	},
+	{
+		feedUrl: M_URL,
+		stops: []stop{
+			{
+				stopId: "M08N",
+			},
+			{
+				stopId: "M08S",
+			},
+		},
+	},
+}
 
 func main() {
-	msg, err := requestFeedMessage()
-	if err != nil {
-		log.Fatal(err)
-	}
+	for _, line := range lines {
+		msg, err := line.requestFeedMessage()
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	msgTime := int64(*msg.Header.Timestamp)
-	arrivalTimes := getArrivalTimesByStopId(msg, STOP_ID)
+		msgTime := int64(*msg.Header.Timestamp)
 
-	for _, t := range arrivalTimes {
-		fmt.Println((t - msgTime) / 60)
+		for _, stop := range line.stops {
+			fmt.Println()
+
+			arrivalTimes := stop.getArrivalTimes(msg)[:2]
+			nextArrivalTimes := arrivalTimes[:2]
+
+			for _, arrivalTime := range nextArrivalTimes {
+				minTilArrival := (arrivalTime - msgTime) / 60
+				fmt.Println(minTilArrival)
+			}
+		}
 	}
 }
 
-func getArrivalTimesByStopId(msg *pb.FeedMessage, stopId string) []int64 {
+func (stop stop) getArrivalTimes(msg *pb.FeedMessage) []int64 {
 	arrivalTimes := []int64{}
 
 	for _, entity := range msg.GetEntity() {
 		for _, update := range entity.GetTripUpdate().GetStopTimeUpdate() {
-			if update.GetStopId() == stopId {
+			if update.GetStopId() == stop.stopId {
 				arrivalTimes = append(arrivalTimes, update.GetArrival().GetTime())
 			}
 		}
@@ -41,10 +88,8 @@ func getArrivalTimesByStopId(msg *pb.FeedMessage, stopId string) []int64 {
 	return arrivalTimes
 }
 
-func requestFeedMessage() (*pb.FeedMessage, error) {
-	endpointUri := "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
-
-	resp, err := http.Get(endpointUri)
+func (line line) requestFeedMessage() (*pb.FeedMessage, error) {
+	resp, err := http.Get(line.feedUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -61,4 +106,23 @@ func requestFeedMessage() (*pb.FeedMessage, error) {
 	}
 
 	return msg, nil
+}
+
+func writeFeedMessage(msg *pb.FeedMessage) {
+	marshallOptions := protojson.MarshalOptions{
+		Indent: "  ",
+	}
+
+	msgJson, err := marshallOptions.Marshal(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	const (
+		LOWEST_FILE_PERMS = 0644
+	)
+	err = os.WriteFile("mta-feed.json", msgJson, LOWEST_FILE_PERMS)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
