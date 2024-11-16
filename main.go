@@ -10,18 +10,38 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var MYRTLE_WYCKOFF_L_STOP_ID = "L17N"
+var STOP_ID = "L17S" // canarsie
+// var STOP_ID = "L17N" // 8 av
 
 func main() {
-	msg, err := getGtfsRealtime()
+	msg, err := requestFeedMessage()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(msg.String())
+	msgTime := int64(*msg.Header.Timestamp)
+	arrivalTimes := getArrivalTimesByStopId(msg, STOP_ID)
+
+	for _, t := range arrivalTimes {
+		fmt.Println((t - msgTime) / 60)
+	}
 }
 
-func getGtfsRealtime() (*pb.FeedMessage, error) {
+func getArrivalTimesByStopId(msg *pb.FeedMessage, stopId string) []int64 {
+	arrivalTimes := []int64{}
+
+	for _, entity := range msg.GetEntity() {
+		for _, update := range entity.GetTripUpdate().GetStopTimeUpdate() {
+			if update.GetStopId() == stopId {
+				arrivalTimes = append(arrivalTimes, update.GetArrival().GetTime())
+			}
+		}
+	}
+
+	return arrivalTimes
+}
+
+func requestFeedMessage() (*pb.FeedMessage, error) {
 	endpointUri := "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
 
 	resp, err := http.Get(endpointUri)
