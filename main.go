@@ -23,7 +23,10 @@ type line struct {
 }
 
 type stop struct {
-	stopId string
+	stopId            string
+	headsign          string
+	delay             bool
+	arrivalCountdowns []int64
 }
 
 var lines = []line{
@@ -31,9 +34,11 @@ var lines = []line{
 		feedUrl: L_URL,
 		stops: []stop{
 			{
+				headsign: "8th Ave",
 				stopId: "L17N",
 			},
 			{
+				headsign: "Canarsie",
 				stopId: "L17S",
 			},
 		},
@@ -42,9 +47,11 @@ var lines = []line{
 		feedUrl: M_URL,
 		stops: []stop{
 			{
+				headsign: "Forest Hills",
 				stopId: "M08N",
 			},
 			{
+				headsign: "Middle Village",
 				stopId: "M08S",
 			},
 		},
@@ -58,34 +65,43 @@ func main() {
 			log.Fatal(err)
 		}
 
-		msgTime := int64(*msg.Header.Timestamp)
+		writeFeedMessage(msg)
 
 		for _, stop := range line.stops {
-			fmt.Println()
-
-			arrivalTimes := stop.getArrivalTimes(msg)[:2]
-			nextArrivalTimes := arrivalTimes[:2]
-
-			for _, arrivalTime := range nextArrivalTimes {
-				minTilArrival := (arrivalTime - msgTime) / 60
-				fmt.Println(minTilArrival)
-			}
+			stop.processMsg(msg)
+			stop.print()
 		}
 	}
 }
 
-func (stop stop) getArrivalTimes(msg *pb.FeedMessage) []int64 {
-	arrivalTimes := []int64{}
+func (stop *stop) processMsg(msg *pb.FeedMessage) {
+	msgTime := int64(*msg.Header.Timestamp)
 
+	arrivals := []*pb.TripUpdate_StopTimeEvent{}
 	for _, entity := range msg.GetEntity() {
 		for _, update := range entity.GetTripUpdate().GetStopTimeUpdate() {
 			if update.GetStopId() == stop.stopId {
-				arrivalTimes = append(arrivalTimes, update.GetArrival().GetTime())
+				arrivals = append(arrivals, update.GetArrival())
 			}
 		}
 	}
 
-	return arrivalTimes
+	for _, arrival := range arrivals {
+		arrivalCountdown := (arrival.GetTime() - msgTime) / 60
+		stop.arrivalCountdowns = append(stop.arrivalCountdowns, arrivalCountdown)
+		if arrival.GetDelay() > 0 {
+			stop.delay = true
+		}
+	}
+}
+
+func (stop stop) print() {
+	var delayStr string
+	if stop.delay {
+		delayStr = "(delayed)"
+	}
+
+	fmt.Printf("%s: %v %s\n", stop.headsign, stop.arrivalCountdowns[:2], delayStr)
 }
 
 func (line line) requestFeedMessage() (*pb.FeedMessage, error) {
@@ -121,7 +137,10 @@ func writeFeedMessage(msg *pb.FeedMessage) {
 	const (
 		LOWEST_FILE_PERMS = 0644
 	)
-	err = os.WriteFile("mta-feed.json", msgJson, LOWEST_FILE_PERMS)
+
+	outFile := fmt.Sprintf("mta-feed-%d.json", *msg.Header.Timestamp)
+
+	err = os.WriteFile(outFile, msgJson, LOWEST_FILE_PERMS)
 	if err != nil {
 		log.Fatal(err)
 	}
