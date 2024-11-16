@@ -13,99 +13,105 @@ import (
 )
 
 const (
-	L_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
-	M_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm"
+	L_URL    = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
+	BDFM_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm"
 )
 
-type line struct {
-	feedUrl string
-	stops   []stop
+type subway struct {
+	feedUrl   string
+	platforms []platform
 }
 
-type stop struct {
+type platform struct {
 	stopId            string
+	routeId           string
 	headsign          string
 	delay             bool
 	arrivalCountdowns []int64
 }
 
-var lines = []line{
+var subways = []subway{
 	{
 		feedUrl: L_URL,
-		stops: []stop{
+		platforms: []platform{
 			{
-				headsign: "8th Ave",
-				stopId: "L17N",
+				headsign: "8th Av",
+				stopId:   "L17N",
 			},
 			{
 				headsign: "Canarsie",
-				stopId: "L17S",
+				stopId:   "L17S",
 			},
 		},
 	},
 	{
-		feedUrl: M_URL,
-		stops: []stop{
+		feedUrl: BDFM_URL,
+		platforms: []platform{
 			{
-				headsign: "Forest Hills",
-				stopId: "M08N",
+				headsign: "Myrtle Av",
+				stopId:   "M08N",
 			},
 			{
 				headsign: "Middle Village",
-				stopId: "M08S",
+				stopId:   "M08S",
 			},
 		},
 	},
 }
 
 func main() {
-	for _, line := range lines {
-		msg, err := line.requestFeedMessage()
+	for _, subway := range subways {
+		msg, err := subway.requestFeedMessage()
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		writeFeedMessage(msg)
 
-		for _, stop := range line.stops {
-			stop.processMsg(msg)
-			stop.print()
+		for _, platform := range subway.platforms {
+			platform.processMsg(msg)
+			platform.print()
 		}
 	}
 }
 
-func (stop *stop) processMsg(msg *pb.FeedMessage) {
+func (platform *platform) processMsg(msg *pb.FeedMessage) {
 	msgTime := int64(*msg.Header.Timestamp)
 
 	arrivals := []*pb.TripUpdate_StopTimeEvent{}
+
 	for _, entity := range msg.GetEntity() {
-		for _, update := range entity.GetTripUpdate().GetStopTimeUpdate() {
-			if update.GetStopId() == stop.stopId {
-				arrivals = append(arrivals, update.GetArrival())
+		tripUpdate := entity.GetTripUpdate()
+		for _, stopTimeUpdate := range tripUpdate.GetStopTimeUpdate() {
+			if stopTimeUpdate.GetStopId() == platform.stopId {
+				platform.routeId = tripUpdate.GetTrip().GetRouteId()
+				arrivals = append(arrivals, stopTimeUpdate.GetArrival())
 			}
 		}
 	}
 
 	for _, arrival := range arrivals {
 		arrivalCountdown := (arrival.GetTime() - msgTime) / 60
-		stop.arrivalCountdowns = append(stop.arrivalCountdowns, arrivalCountdown)
+		if len(platform.arrivalCountdowns) < 2 {
+			platform.arrivalCountdowns = append(platform.arrivalCountdowns, arrivalCountdown)
+		}
 		if arrival.GetDelay() > 0 {
-			stop.delay = true
+			platform.delay = true
 		}
 	}
 }
 
-func (stop stop) print() {
+func (platform platform) print() {
 	var delayStr string
-	if stop.delay {
+	if platform.delay {
 		delayStr = "(delayed)"
 	}
 
-	fmt.Printf("%s: %v %s\n", stop.headsign, stop.arrivalCountdowns[:2], delayStr)
+	fmt.Printf("%s %s %v %s\n", platform.routeId, platform.headsign, platform.arrivalCountdowns, delayStr)
 }
 
-func (line line) requestFeedMessage() (*pb.FeedMessage, error) {
-	resp, err := http.Get(line.feedUrl)
+func (subway subway) requestFeedMessage() (*pb.FeedMessage, error) {
+	resp, err := http.Get(subway.feedUrl)
 	if err != nil {
 		return nil, err
 	}
