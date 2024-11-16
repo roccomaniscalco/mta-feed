@@ -144,7 +144,7 @@ func writeFeedMessage(msg *pb.FeedMessage) {
 		LOWEST_FILE_PERMS = 0644
 	)
 
-	outFile := fmt.Sprintf("mta-feed-%d.json", *msg.Header.Timestamp)
+	outFile := fmt.Sprintf("out/mta-feed-%d.json", *msg.Header.Timestamp)
 
 	err = os.WriteFile(outFile, msgJson, LOWEST_FILE_PERMS)
 	if err != nil {
