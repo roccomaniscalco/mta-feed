@@ -7,6 +7,7 @@ import (
 	"mta-feed/pb"
 	"net/http"
 	"os"
+	"sort"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -89,6 +90,10 @@ func (platform *platform) processMsg(msg *pb.FeedMessage) {
 			}
 		}
 	}
+
+	sort.Slice(arrivals, func(i, j int) bool {
+		return arrivals[i].GetTime() < arrivals[j].GetTime()
+	})
 
 	for _, arrival := range arrivals {
 		arrivalCountdown := (arrival.GetTime() - msgTime) / 60
