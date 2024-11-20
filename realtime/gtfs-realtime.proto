@@ -24,7 +24,7 @@
 
 syntax = "proto2";
 package gtfs_realtime;
-option go_package = "./pb";
+option go_package = "./realtime";
 
 // The contents of a feed message.
 // A feed is a continuous stream of feed messages. Each message in the stream is

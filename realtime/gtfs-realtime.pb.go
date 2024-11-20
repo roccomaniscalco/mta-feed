@@ -28,7 +28,7 @@
 // 	protoc        v5.28.3
 // source: gtfs-realtime.proto
 
-package pb
+package realtime
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"

@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"mta-feed/pb"
 	"net/http"
 	"os"
 	"sort"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	"mta-feed/realtime"
 )
 
 const (
@@ -82,10 +83,10 @@ func main() {
 	}
 }
 
-func (platform *platform) processMsg(msg *pb.FeedMessage) {
+func (platform *platform) processMsg(msg *realtime.FeedMessage) {
 	msgTime := int64(*msg.Header.Timestamp)
 
-	arrivals := []*pb.TripUpdate_StopTimeEvent{}
+	arrivals := []*realtime.TripUpdate_StopTimeEvent{}
 
 	for _, entity := range msg.GetEntity() {
 		tripUpdate := entity.GetTripUpdate()
@@ -121,7 +122,7 @@ func (platform platform) print() {
 	fmt.Printf("%s %s %v %s\n", platform.routeId, platform.headsign, platform.arrivalCountdowns, delayStr)
 }
 
-func (subway subway) requestFeedMessage() (*pb.FeedMessage, error) {
+func (subway subway) requestFeedMessage() (*realtime.FeedMessage, error) {
 	resp, err := http.Get(subway.feedUrl)
 	if err != nil {
 		return nil, err
@@ -133,7 +134,7 @@ func (subway subway) requestFeedMessage() (*pb.FeedMessage, error) {
 		return nil, err
 	}
 
-	msg := &pb.FeedMessage{}
+	msg := &realtime.FeedMessage{}
 	if err := proto.Unmarshal(body, msg); err != nil {
 		return nil, err
 	}
@@ -141,7 +142,7 @@ func (subway subway) requestFeedMessage() (*pb.FeedMessage, error) {
 	return msg, nil
 }
 
-func writeFeedMessage(msg *pb.FeedMessage) {
+func writeFeedMessage(msg *realtime.FeedMessage) {
 	marshallOptions := protojson.MarshalOptions{
 		Indent: "  ",
 	}
