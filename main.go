@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"mta-feed/realtime"
+	"mta-feed/static"
 )
 
 const (
@@ -68,19 +69,25 @@ var subways = []subway{
 }
 
 func main() {
-	for _, subway := range subways {
-		msg, err := subway.requestFeedMessage()
-		if err != nil {
-			log.Fatal(err)
-		}
+	// for _, subway := range subways {
+	// 	msg, err := subway.requestFeedMessage()
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
 
-		writeFeedMessage(msg)
+	// 	writeFeedMessage(msg)
 
-		for _, platform := range subway.platforms {
-			platform.processMsg(msg)
-			platform.print()
-		}
+	// 	for _, platform := range subway.platforms {
+	// 		platform.processMsg(msg)
+	// 		platform.print()
+	// 	}
+	// }
+
+	feed, err := static.GetFeed()
+	if err != nil {
+		log.Fatal(err)
 	}
+	log.Print(feed.Agencies)
 }
 
 func (platform *platform) processMsg(msg *realtime.FeedMessage) {
