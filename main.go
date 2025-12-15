@@ -6,12 +6,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"mta-feed/realtime"
 )
+
+const LOWEST_FILE_PERMS = 0644
+
+const STOPS_FILE_PATH = "stops.txt"
 
 const (
 	ACE_FEED_URL       = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace"
@@ -43,6 +48,7 @@ var stopIds = []string{
 }
 
 func main() {
+	stopIdToName := createStopIdToName()
 	arrivalsByStopId := make(map[string][]arrival)
 
 	for _, feedUrl := range feedUrls {
@@ -51,7 +57,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		writeFeedMessage(feedMessage)
+		// writeFeedMessage(feedMessage)
 
 		for _, stopId := range stopIds {
 			arrivals := findArrivals(stopId, feedMessage)
@@ -59,7 +65,11 @@ func main() {
 		}
 	}
 
-	fmt.Println(arrivalsByStopId)
+	for stopId, arrivals := range arrivalsByStopId {
+		for _, arrival := range arrivals {
+			fmt.Printf("%s %s %s %v\n", stopId, arrival.routeId, stopIdToName[arrival.finalStopId], arrival.time)
+		}
+	}
 }
 
 func findArrivals(stopId string, feedMessage *realtime.FeedMessage) []arrival {
@@ -80,6 +90,30 @@ func findArrivals(stopId string, feedMessage *realtime.FeedMessage) []arrival {
 	}
 
 	return arrivals
+}
+
+func createStopIdToName() map[string]string {
+	stopIdToName := make(map[string]string)
+
+	bytes, err := os.ReadFile(STOPS_FILE_PATH)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	content := string(bytes)
+	lines := strings.Split(content, "\n")
+
+	for _, line := range lines {
+		fields := strings.Split(line, ",")
+
+		if len(fields) >= 2 {
+			stopId := fields[0]
+			stopName := fields[1]
+			stopIdToName[stopId] = stopName
+		}
+	}
+
+	return stopIdToName
 }
 
 func requestFeedMessage(feedUrl string) (*realtime.FeedMessage, error) {
@@ -111,10 +145,6 @@ func writeFeedMessage(msg *realtime.FeedMessage) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	const (
-		LOWEST_FILE_PERMS = 0644
-	)
 
 	outFile := fmt.Sprintf("out/mta-feed-%d.json", *msg.Header.Timestamp)
 
