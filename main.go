@@ -55,7 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Error Fetching Feeds:", err)
 	}
-	
+
 	stopIdToName := createStopIdToName()
 	arrivals := findArrivals(stopIds, feeds)
 	currentTime := time.Now().Unix()
