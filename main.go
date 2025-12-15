@@ -30,26 +30,27 @@ const (
 )
 
 type arrival struct {
+	stopId      string
 	routeId     string
 	finalStopId string
 	time        int64
 }
 
 var feedUrls = []string{
-	L_FEED_URL,
-	BDFM_FEED_URL,
+	ACE_FEED_URL,
+	_1234567S_FEED_URL,
 }
 
 var stopIds = []string{
-	"L17N",
-	"L17S",
-	"M08N",
-	"M08S",
+	"A46N",
+	"A46S",
+	"239N",
+	"239S",
 }
 
 func main() {
 	stopIdToName := createStopIdToName()
-	arrivalsByStopId := make(map[string][]arrival)
+	arrivals := []arrival{}
 
 	for _, feedUrl := range feedUrls {
 		feedMessage, err := requestFeedMessage(feedUrl)
@@ -57,34 +58,33 @@ func main() {
 			log.Fatal(err)
 		}
 
-		// writeFeedMessage(feedMessage)
+		writeFeedMessage(feedMessage)
 
-		for _, stopId := range stopIds {
-			arrivals := findArrivals(stopId, feedMessage)
-			arrivalsByStopId[stopId] = append(arrivalsByStopId[stopId], arrivals...)
-		}
+		arrivals = append(arrivals, findArrivals(stopIds, feedMessage)...)
 	}
 
-	for stopId, arrivals := range arrivalsByStopId {
-		for _, arrival := range arrivals {
-			fmt.Printf("%s %s %s %v\n", stopId, arrival.routeId, stopIdToName[arrival.finalStopId], arrival.time)
-		}
+	for _, arrival := range arrivals {
+		fmt.Printf("%s %s %s %v\n", stopIdToName[arrival.stopId], arrival.routeId, stopIdToName[arrival.finalStopId], arrival.time)
 	}
+
 }
 
-func findArrivals(stopId string, feedMessage *realtime.FeedMessage) []arrival {
+func findArrivals(stopIds []string, feedMessage *realtime.FeedMessage) []arrival {
 	arrivals := []arrival{}
 
-	for _, feedEntity := range feedMessage.GetEntity() {
-		tripUpdate := feedEntity.GetTripUpdate()
-		stopTimeUpdates := tripUpdate.GetStopTimeUpdate()
-		for _, stopTimeUpdate := range stopTimeUpdates {
-			if stopTimeUpdate.GetStopId() == stopId {
-				arrivals = append(arrivals, arrival{
-					routeId:     tripUpdate.Trip.GetRouteId(),
-					finalStopId: stopTimeUpdates[len(stopTimeUpdates)-1].GetStopId(),
-					time:        stopTimeUpdate.GetArrival().GetTime(),
-				})
+	for _, stopId := range stopIds {
+		for _, feedEntity := range feedMessage.GetEntity() {
+			tripUpdate := feedEntity.GetTripUpdate()
+			stopTimeUpdates := tripUpdate.GetStopTimeUpdate()
+			for _, stopTimeUpdate := range stopTimeUpdates {
+				if stopTimeUpdate.GetStopId() == stopId {
+					arrivals = append(arrivals, arrival{
+						stopId:      stopId,
+						routeId:     tripUpdate.Trip.GetRouteId(),
+						finalStopId: stopTimeUpdates[len(stopTimeUpdates)-1].GetStopId(),
+						time:        stopTimeUpdate.GetArrival().GetTime(),
+					})
+				}
 			}
 		}
 	}
@@ -105,7 +105,6 @@ func createStopIdToName() map[string]string {
 
 	for _, line := range lines {
 		fields := strings.Split(line, ",")
-
 		if len(fields) >= 2 {
 			stopId := fields[0]
 			stopName := fields[1]
