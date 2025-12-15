@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
@@ -49,41 +51,42 @@ var stopIds = []string{
 }
 
 func main() {
-	stopIdToName := createStopIdToName()
-	arrivals := []arrival{}
-
-	for _, feedUrl := range feedUrls {
-		feedMessage, err := requestFeedMessage(feedUrl)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		writeFeedMessage(feedMessage)
-
-		arrivals = append(arrivals, findArrivals(stopIds, feedMessage)...)
+	feeds, err := fetchFeeds(feedUrls)
+	if err != nil {
+		log.Fatal("Error Fetching Feeds:", err)
 	}
+	
+	stopIdToName := createStopIdToName()
+	arrivals := findArrivals(stopIds, feeds)
+	currentTime := time.Now().Unix()
 
 	for _, arrival := range arrivals {
-		fmt.Printf("%s %s %s %v\n", stopIdToName[arrival.stopId], arrival.routeId, stopIdToName[arrival.finalStopId], arrival.time)
+		fmt.Printf("%s %s %s %v\n",
+			arrival.stopId,
+			arrival.routeId,
+			stopIdToName[arrival.finalStopId],
+			(arrival.time-currentTime)/60,
+		)
 	}
-
 }
 
-func findArrivals(stopIds []string, feedMessage *realtime.FeedMessage) []arrival {
+func findArrivals(stopIds []string, feeds []*realtime.FeedMessage) []arrival {
 	arrivals := []arrival{}
 
 	for _, stopId := range stopIds {
-		for _, feedEntity := range feedMessage.GetEntity() {
-			tripUpdate := feedEntity.GetTripUpdate()
-			stopTimeUpdates := tripUpdate.GetStopTimeUpdate()
-			for _, stopTimeUpdate := range stopTimeUpdates {
-				if stopTimeUpdate.GetStopId() == stopId {
-					arrivals = append(arrivals, arrival{
-						stopId:      stopId,
-						routeId:     tripUpdate.Trip.GetRouteId(),
-						finalStopId: stopTimeUpdates[len(stopTimeUpdates)-1].GetStopId(),
-						time:        stopTimeUpdate.GetArrival().GetTime(),
-					})
+		for _, feed := range feeds {
+			for _, feedEntity := range feed.GetEntity() {
+				tripUpdate := feedEntity.GetTripUpdate()
+				stopTimeUpdates := tripUpdate.GetStopTimeUpdate()
+				for _, stopTimeUpdate := range stopTimeUpdates {
+					if stopTimeUpdate.GetStopId() == stopId {
+						arrivals = append(arrivals, arrival{
+							stopId:      stopId,
+							routeId:     tripUpdate.Trip.GetRouteId(),
+							finalStopId: stopTimeUpdates[len(stopTimeUpdates)-1].GetStopId(),
+							time:        stopTimeUpdate.GetArrival().GetTime(),
+						})
+					}
 				}
 			}
 		}
@@ -115,7 +118,33 @@ func createStopIdToName() map[string]string {
 	return stopIdToName
 }
 
-func requestFeedMessage(feedUrl string) (*realtime.FeedMessage, error) {
+func fetchFeeds(feedUrls []string) ([]*realtime.FeedMessage, error) {
+	feeds := make([]*realtime.FeedMessage, len(feedUrls))
+	var g errgroup.Group
+
+	for i, feedUrl := range feedUrls {
+		g.Go(func() error {
+			i, feedUrl := i, feedUrl // capture loop variables
+
+			feed, err := fetchFeed(feedUrl)
+			if err != nil {
+				return err
+			}
+
+			writeFeed(feed)
+
+			feeds[i] = feed
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return feeds, nil
+}
+
+func fetchFeed(feedUrl string) (*realtime.FeedMessage, error) {
 	resp, err := http.Get(feedUrl)
 	if err != nil {
 		return nil, err
@@ -127,27 +156,27 @@ func requestFeedMessage(feedUrl string) (*realtime.FeedMessage, error) {
 		return nil, err
 	}
 
-	msg := &realtime.FeedMessage{}
-	if err := proto.Unmarshal(body, msg); err != nil {
+	feed := &realtime.FeedMessage{}
+	if err := proto.Unmarshal(body, feed); err != nil {
 		return nil, err
 	}
 
-	return msg, nil
+	return feed, nil
 }
 
-func writeFeedMessage(msg *realtime.FeedMessage) {
+func writeFeed(msg *realtime.FeedMessage) {
 	marshallOptions := protojson.MarshalOptions{
 		Indent: "  ",
 	}
 
-	msgJson, err := marshallOptions.Marshal(msg)
+	feedJson, err := marshallOptions.Marshal(msg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	outFile := fmt.Sprintf("out/mta-feed-%d.json", *msg.Header.Timestamp)
 
-	err = os.WriteFile(outFile, msgJson, LOWEST_FILE_PERMS)
+	err = os.WriteFile(outFile, feedJson, LOWEST_FILE_PERMS)
 	if err != nil {
 		log.Fatal(err)
 	}
