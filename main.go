@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -31,11 +33,13 @@ const (
 	SI_FEED_URL        = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
 )
 
-type arrival struct {
-	stopId      string
-	routeId     string
-	finalStopId string
-	time        int64
+type departure struct {
+	stopId        string
+	stopName      string
+	routeId       string
+	finalStopId   string
+	finalStopName string
+	time          int64
 }
 
 var feedUrls = []string{
@@ -50,28 +54,72 @@ var stopIds = []string{
 	"239S",
 }
 
+var stopIdToName = createStopIdToName()
+
 func main() {
 	feeds, err := fetchFeeds(feedUrls)
 	if err != nil {
 		log.Fatal("Error Fetching Feeds:", err)
 	}
 
-	stopIdToName := createStopIdToName()
-	arrivals := findArrivals(stopIds, feeds)
+	departures := findDepartures(stopIds, feeds)
+	printDepartures(departures)
+}
+
+func printDepartures(departures []departure) {
 	currentTime := time.Now().Unix()
 
-	for _, arrival := range arrivals {
-		fmt.Printf("%s %s %s %v\n",
-			arrival.stopId,
-			arrival.routeId,
-			stopIdToName[arrival.finalStopId],
-			(arrival.time-currentTime)/60,
-		)
+	// stopName -> routeId -> finalStopName -> times
+	grouped := make(map[string]map[string]map[string][]int64)
+
+	// Create nested map of departures
+	for _, d := range departures {
+		if grouped[d.stopName] == nil {
+			grouped[d.stopName] = make(map[string]map[string][]int64)
+		}
+		if grouped[d.stopName][d.routeId] == nil {
+			grouped[d.stopName][d.routeId] = make(map[string][]int64)
+		}
+		grouped[d.stopName][d.routeId][d.finalStopName] =
+			append(grouped[d.stopName][d.routeId][d.finalStopName], d.time)
+	}
+
+	const (
+		Bold  = "\033[1m"
+		Reset = "\033[0m"
+	)
+
+	// Sort fields at each layer
+	stopNames := slices.Sorted(maps.Keys(grouped))
+	for _, stopName := range stopNames {
+		routeIds := slices.Sorted(maps.Keys(grouped[stopName]))
+		fmt.Printf("\n%s%s%s\n", Bold, stopName, Reset)
+
+		for _, routeId := range routeIds {
+			finalStopNames := slices.Sorted(maps.Keys(grouped[stopName][routeId]))
+			fmt.Printf("\n%s Train\n", routeId)
+
+			for _, finalStopName := range finalStopNames {
+				times := (grouped[stopName][routeId][finalStopName])
+				slices.Sort(times)
+
+				// Display 2 soonest departure times as countdown in minutes
+				minutesTilDepartures := []int64{}
+				for _, time := range times {
+					minutes := (time - currentTime) / 60
+					if minutes >= 0 && len(minutesTilDepartures) < 2 {
+						minutesTilDepartures = append(minutesTilDepartures, minutes)
+					}
+				}
+
+				fmt.Printf("%s %v\n", finalStopName, minutesTilDepartures)
+			}
+		}
 	}
 }
 
-func findArrivals(stopIds []string, feeds []*realtime.FeedMessage) []arrival {
-	arrivals := []arrival{}
+func findDepartures(stopIds []string, feeds []*realtime.FeedMessage) []departure {
+	departures := []departure{}
 
 	for _, stopId := range stopIds {
 		for _, feed := range feeds {
@@ -80,11 +128,14 @@ func findArrivals(stopIds []string, feeds []*realtime.FeedMessage) []arrival {
 				stopTimeUpdates := tripUpdate.GetStopTimeUpdate()
 				for _, stopTimeUpdate := range stopTimeUpdates {
 					if stopTimeUpdate.GetStopId() == stopId {
-						arrivals = append(arrivals, arrival{
-							stopId:      stopId,
-							routeId:     tripUpdate.Trip.GetRouteId(),
-							finalStopId: stopTimeUpdates[len(stopTimeUpdates)-1].GetStopId(),
-							time:        stopTimeUpdate.GetArrival().GetTime(),
+						finalStopId := stopTimeUpdates[len(stopTimeUpdates)-1].GetStopId()
+						departures = append(departures, departure{
+							stopId:        stopId,
+							stopName:      stopIdToName[stopId],
+							routeId:       tripUpdate.Trip.GetRouteId(),
+							finalStopId:   finalStopId,
+							finalStopName: stopIdToName[finalStopId],
+							time:          stopTimeUpdate.GetDeparture().GetTime(),
 						})
 					}
 				}
@@ -92,7 +143,7 @@ func findArrivals(stopIds []string, feeds []*realtime.FeedMessage) []arrival {
 		}
 	}
 
-	return arrivals
+	return departures
 }
 
 func createStopIdToName() map[string]string {
@@ -131,7 +182,7 @@ func fetchFeeds(feedUrls []string) ([]*realtime.FeedMessage, error) {
 				return err
 			}
 
-			writeFeed(feed)
+			// writeFeed(feed)
 
 			feeds[i] = feed
 			return nil
