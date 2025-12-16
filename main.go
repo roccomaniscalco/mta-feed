@@ -40,6 +40,7 @@ type departure struct {
 	finalStopId   string
 	finalStopName string
 	time          int64
+	delay         int32
 }
 
 var feedUrls = []string{
@@ -125,17 +126,18 @@ func findDepartures(stopIds []string, feeds []*realtime.FeedMessage) []departure
 		for _, feed := range feeds {
 			for _, feedEntity := range feed.GetEntity() {
 				tripUpdate := feedEntity.GetTripUpdate()
-				stopTimeUpdates := tripUpdate.GetStopTimeUpdate()
-				for _, stopTimeUpdate := range stopTimeUpdates {
-					if stopTimeUpdate.GetStopId() == stopId {
-						finalStopId := stopTimeUpdates[len(stopTimeUpdates)-1].GetStopId()
+				stopTimes := tripUpdate.GetStopTimeUpdate()
+				for _, stopTime := range stopTimes {
+					if stopTime.GetStopId() == stopId {
+						finalStopId := stopTimes[len(stopTimes)-1].GetStopId()
 						departures = append(departures, departure{
 							stopId:        stopId,
 							stopName:      stopIdToName[stopId],
 							routeId:       tripUpdate.Trip.GetRouteId(),
 							finalStopId:   finalStopId,
 							finalStopName: stopIdToName[finalStopId],
-							time:          stopTimeUpdate.GetDeparture().GetTime(),
+							time:          stopTime.GetDeparture().GetTime(),
+							delay:         stopTime.GetDeparture().GetDelay(),
 						})
 					}
 				}
