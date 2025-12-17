@@ -1,6 +1,6 @@
-# MTA Feed
+# NYCT Feed
 
-Realtime NYC Transit feed. Data provided by the [MTA](https://www.mta.info/developers).
+Realtime NYC transit updates. Data provided by the [MTA](https://www.mta.info/developers).
 
 ## Local Development
 

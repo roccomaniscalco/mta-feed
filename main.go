@@ -15,7 +15,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	"mta-feed/proto/gtfs"
+	"nyct-feed/proto/gtfs"
 )
 
 const STOPS_FILE_PATH = "stops.txt"

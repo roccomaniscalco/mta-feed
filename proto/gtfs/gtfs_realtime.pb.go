@@ -3733,7 +3733,7 @@ const file_proto_gtfs_gtfs_realtime_proto_rawDesc = "" +
 	"\astop_id\x18\x02 \x01(\tR\x06stopId*\x06\b\xe8\a\x10\xd0\x0f*\x06\b\xa8F\x10\x90N\"i\n" +
 	"\x0fReplacementStop\x12-\n" +
 	"\x13travel_time_to_stop\x18\x01 \x01(\x05R\x10travelTimeToStop\x12\x17\n" +
-	"\astop_id\x18\x02 \x01(\tR\x06stopId*\x06\b\xe8\a\x10\xd0\x0f*\x06\b\xa8F\x10\x90NB\x15Z\x13mta-feed/proto/gtfs"
+	"\astop_id\x18\x02 \x01(\tR\x06stopId*\x06\b\xe8\a\x10\xd0\x0f*\x06\b\xa8F\x10\x90NB\x16Z\x14nyct-feed/proto/gtfs"
 
 var (
 	file_proto_gtfs_gtfs_realtime_proto_rawDescOnce sync.Once

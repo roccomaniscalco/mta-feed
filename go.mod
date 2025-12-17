@@ -1,4 +1,4 @@
-module mta-feed
+module nyct-feed
 
 go 1.24.0
 

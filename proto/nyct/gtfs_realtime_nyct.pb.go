@@ -17,7 +17,7 @@ package nyct
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	gtfs "mta-feed/proto/gtfs"
+	gtfs "nyct-feed/proto/gtfs"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -465,7 +465,7 @@ const file_proto_nyct_gtfs_realtime_nyct_proto_rawDesc = "" +
 	"\factual_track\x18\x02 \x01(\tR\vactualTrack:h\n" +
 	"\x10nyct_feed_header\x12\x19.gtfs_realtime.FeedHeader\x18\xe9\a \x01(\v2\".gtfs_realtime_nyct.NyctFeedHeaderR\x0enyctFeedHeader:x\n" +
 	"\x14nyct_trip_descriptor\x12\x1d.gtfs_realtime.TripDescriptor\x18\xe9\a \x01(\v2&.gtfs_realtime_nyct.NyctTripDescriptorR\x12nyctTripDescriptor:\x84\x01\n" +
-	"\x15nyct_stop_time_update\x12(.gtfs_realtime.TripUpdate.StopTimeUpdate\x18\xe9\a \x01(\v2&.gtfs_realtime_nyct.NyctStopTimeUpdateR\x12nyctStopTimeUpdateB\x15Z\x13mta-feed/proto/nyct"
+	"\x15nyct_stop_time_update\x12(.gtfs_realtime.TripUpdate.StopTimeUpdate\x18\xe9\a \x01(\v2&.gtfs_realtime_nyct.NyctStopTimeUpdateR\x12nyctStopTimeUpdateB\x16Z\x14nyct-feed/proto/nyct"
 
 var (
 	file_proto_nyct_gtfs_realtime_nyct_proto_rawDescOnce sync.Once
