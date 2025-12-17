@@ -2,34 +2,18 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"maps"
-	"net/http"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
-
+	"nyct-feed/pkg/realtime"
 	"nyct-feed/proto/gtfs"
 )
 
 const STOPS_FILE_PATH = "stops.txt"
-
-const (
-	ACE_FEED_URL       = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace"
-	BDFM_FEED_URL      = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm"
-	G_FEED_URL         = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-g"
-	JZ_FEED_URL        = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-jz"
-	NQRW_FEED_URL      = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-nqrw"
-	L_FEED_URL         = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
-	_1234567S_FEED_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs"
-	SI_FEED_URL        = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
-)
 
 var routeIdToColor = map[string]string{
 	"A":  "\033[38;2;0;98;207m",    // #0062CF - Blue
@@ -73,17 +57,6 @@ type departure struct {
 	delay         int32
 }
 
-var feedUrls = []string{
-	ACE_FEED_URL,
-	BDFM_FEED_URL,
-	G_FEED_URL,
-	JZ_FEED_URL,
-	NQRW_FEED_URL,
-	L_FEED_URL,
-	_1234567S_FEED_URL,
-	SI_FEED_URL,
-}
-
 var stopIds = []string{
 	"A46N",
 	"A46S",
@@ -94,7 +67,7 @@ var stopIds = []string{
 var stopIdToName = createStopIdToName()
 
 func main() {
-	feeds, err := fetchFeeds(feedUrls)
+	feeds, err := realtime.FetchFeeds()
 	if err != nil {
 		log.Fatal("Error Fetching Feeds:", err)
 	}
@@ -205,78 +178,4 @@ func createStopIdToName() map[string]string {
 	}
 
 	return stopIdToName
-}
-
-func fetchFeeds(feedUrls []string) ([]*gtfs.FeedMessage, error) {
-	feeds := make([]*gtfs.FeedMessage, len(feedUrls))
-	var g errgroup.Group
-
-	for i, feedUrl := range feedUrls {
-		g.Go(func() error {
-			i, feedUrl := i, feedUrl // capture loop variables
-
-			feed, err := fetchFeed(feedUrl)
-			if err != nil {
-				return err
-			}
-
-			// writeFeed(feed)
-
-			feeds[i] = feed
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-	return feeds, nil
-}
-
-func fetchFeed(feedUrl string) (*gtfs.FeedMessage, error) {
-	resp, err := http.Get(feedUrl)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	feed := &gtfs.FeedMessage{}
-	if err := proto.Unmarshal(body, feed); err != nil {
-		return nil, err
-	}
-
-	return feed, nil
-}
-
-const (
-	directoryPerms = 0755
-	filePerms      = 0644
-)
-
-func writeFeed(msg *gtfs.FeedMessage) {
-	marshallOptions := protojson.MarshalOptions{
-		Indent: "  ",
-	}
-
-	feedJson, err := marshallOptions.Marshal(msg)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = os.MkdirAll("out", directoryPerms)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	outFile := fmt.Sprintf("out/mta-feed-%d.json", *msg.Header.Timestamp)
-
-	err = os.WriteFile(outFile, feedJson, filePerms)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
