@@ -33,6 +33,43 @@ const (
 	SI_FEED_URL        = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
 )
 
+const (
+	BOLD  = "\033[1m"
+	RESET = "\033[0m"
+)
+
+var routeIdToColor = map[string]string{
+	"A":  "\033[38;2;0;98;207m",    // #0062CF - Blue
+	"C":  "\033[38;2;0;98;207m",    // #0062CF - Blue
+	"E":  "\033[38;2;0;98;207m",    // #0062CF - Blue
+	"B":  "\033[38;2;235;104;0m",   // #EB6800 - Orange
+	"D":  "\033[38;2;235;104;0m",   // #EB6800 - Orange
+	"F":  "\033[38;2;235;104;0m",   // #EB6800 - Orange
+	"FX": "\033[38;2;235;104;0m",   // #EB6800 - Orange
+	"M":  "\033[38;2;235;104;0m",   // #EB6800 - Orange
+	"G":  "\033[38;2;121;149;52m",  // #799534 - Green
+	"J":  "\033[38;2;142;92;51m",   // #8E5C33 - Brown
+	"Z":  "\033[38;2;142;92;51m",   // #8E5C33 - Brown
+	"L":  "\033[38;2;124;133;140m", // #7C858C - Gray
+	"N":  "\033[38;2;246;188;38m",  // #F6BC26 - Yellow
+	"Q":  "\033[38;2;246;188;38m",  // #F6BC26 - Yellow
+	"R":  "\033[38;2;246;188;38m",  // #F6BC26 - Yellow
+	"W":  "\033[38;2;246;188;38m",  // #F6BC26 - Yellow
+	"GS": "\033[38;2;124;133;140m", // #7C858C - Gray
+	"FS": "\033[38;2;124;133;140m", // #7C858C - Gray
+	"H":  "\033[38;2;124;133;140m", // #7C858C - Gray
+	"1":  "\033[38;2;216;34;51m",   // #D82233 - Red
+	"2":  "\033[38;2;216;34;51m",   // #D82233 - Red
+	"3":  "\033[38;2;216;34;51m",   // #D82233 - Red
+	"4":  "\033[38;2;0;153;82m",    // #009952 - Green
+	"5":  "\033[38;2;0;153;82m",    // #009952 - Green
+	"6":  "\033[38;2;0;153;82m",    // #009952 - Green
+	"6X": "\033[38;2;0;153;82m",    // #009952 - Green
+	"7":  "\033[38;2;154;56;161m",  // #9A38A1 - Purple
+	"7X": "\033[38;2;154;56;161m",  // #9A38A1 - Purple
+	"SI": "\033[38;2;8;23;156m",    // #08179C - Dark Blue
+}
+
 type departure struct {
 	stopId        string
 	stopName      string
@@ -45,7 +82,13 @@ type departure struct {
 
 var feedUrls = []string{
 	ACE_FEED_URL,
+	BDFM_FEED_URL,
+	G_FEED_URL,
+	JZ_FEED_URL,
+	NQRW_FEED_URL,
+	L_FEED_URL,
 	_1234567S_FEED_URL,
+	SI_FEED_URL,
 }
 
 var stopIds = []string{
@@ -85,20 +128,15 @@ func printDepartures(departures []departure) {
 			append(grouped[d.stopName][d.routeId][d.finalStopName], d.time)
 	}
 
-	const (
-		Bold  = "\033[1m"
-		Reset = "\033[0m"
-	)
-
 	// Sort fields at each layer
 	stopNames := slices.Sorted(maps.Keys(grouped))
 	for _, stopName := range stopNames {
 		routeIds := slices.Sorted(maps.Keys(grouped[stopName]))
-		fmt.Printf("\n%s%s%s\n", Bold, stopName, Reset)
+		fmt.Printf("\n%s%s%s\n", BOLD, stopName, RESET)
 
 		for _, routeId := range routeIds {
 			finalStopNames := slices.Sorted(maps.Keys(grouped[stopName][routeId]))
-			fmt.Printf("\n%s Train\n", routeId)
+			fmt.Println()
 
 			for _, finalStopName := range finalStopNames {
 				times := (grouped[stopName][routeId][finalStopName])
@@ -113,7 +151,7 @@ func printDepartures(departures []departure) {
 					}
 				}
 
-				fmt.Printf("%s %v\n", finalStopName, minutesTilDepartures)
+				fmt.Printf("%s%s%s %s %v\n", routeIdToColor[routeId], routeId, RESET, finalStopName, minutesTilDepartures)
 			}
 		}
 	}
