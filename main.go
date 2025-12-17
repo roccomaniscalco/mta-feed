@@ -15,10 +15,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	"mta-feed/realtime"
+	"mta-feed/proto/gtfs"
 )
-
-const LOWEST_FILE_PERMS = 0644
 
 const STOPS_FILE_PATH = "stops.txt"
 
@@ -31,11 +29,6 @@ const (
 	L_FEED_URL         = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
 	_1234567S_FEED_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs"
 	SI_FEED_URL        = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
-)
-
-const (
-	BOLD  = "\033[1m"
-	RESET = "\033[0m"
 )
 
 var routeIdToColor = map[string]string{
@@ -110,6 +103,11 @@ func main() {
 	printDepartures(departures)
 }
 
+const (
+	bold  = "\033[1m"
+	reset = "\033[0m"
+)
+
 func printDepartures(departures []departure) {
 	currentTime := time.Now().Unix()
 
@@ -132,7 +130,7 @@ func printDepartures(departures []departure) {
 	stopNames := slices.Sorted(maps.Keys(grouped))
 	for _, stopName := range stopNames {
 		routeIds := slices.Sorted(maps.Keys(grouped[stopName]))
-		fmt.Printf("\n%s%s%s\n", BOLD, stopName, RESET)
+		fmt.Printf("\n%s%s%s\n", bold, stopName, reset)
 
 		for _, routeId := range routeIds {
 			finalStopNames := slices.Sorted(maps.Keys(grouped[stopName][routeId]))
@@ -151,13 +149,13 @@ func printDepartures(departures []departure) {
 					}
 				}
 
-				fmt.Printf("%s%s%s %s %v\n", routeIdToColor[routeId], routeId, RESET, finalStopName, minutesTilDepartures)
+				fmt.Printf("%s%s%s %s %v\n", routeIdToColor[routeId], routeId, reset, finalStopName, minutesTilDepartures)
 			}
 		}
 	}
 }
 
-func findDepartures(stopIds []string, feeds []*realtime.FeedMessage) []departure {
+func findDepartures(stopIds []string, feeds []*gtfs.FeedMessage) []departure {
 	departures := []departure{}
 
 	for _, stopId := range stopIds {
@@ -209,8 +207,8 @@ func createStopIdToName() map[string]string {
 	return stopIdToName
 }
 
-func fetchFeeds(feedUrls []string) ([]*realtime.FeedMessage, error) {
-	feeds := make([]*realtime.FeedMessage, len(feedUrls))
+func fetchFeeds(feedUrls []string) ([]*gtfs.FeedMessage, error) {
+	feeds := make([]*gtfs.FeedMessage, len(feedUrls))
 	var g errgroup.Group
 
 	for i, feedUrl := range feedUrls {
@@ -235,7 +233,7 @@ func fetchFeeds(feedUrls []string) ([]*realtime.FeedMessage, error) {
 	return feeds, nil
 }
 
-func fetchFeed(feedUrl string) (*realtime.FeedMessage, error) {
+func fetchFeed(feedUrl string) (*gtfs.FeedMessage, error) {
 	resp, err := http.Get(feedUrl)
 	if err != nil {
 		return nil, err
@@ -247,7 +245,7 @@ func fetchFeed(feedUrl string) (*realtime.FeedMessage, error) {
 		return nil, err
 	}
 
-	feed := &realtime.FeedMessage{}
+	feed := &gtfs.FeedMessage{}
 	if err := proto.Unmarshal(body, feed); err != nil {
 		return nil, err
 	}
@@ -255,7 +253,12 @@ func fetchFeed(feedUrl string) (*realtime.FeedMessage, error) {
 	return feed, nil
 }
 
-func writeFeed(msg *realtime.FeedMessage) {
+const (
+	directoryPerms = 0755
+	filePerms      = 0644
+)
+
+func writeFeed(msg *gtfs.FeedMessage) {
 	marshallOptions := protojson.MarshalOptions{
 		Indent: "  ",
 	}
@@ -265,9 +268,14 @@ func writeFeed(msg *realtime.FeedMessage) {
 		log.Fatal(err)
 	}
 
+	err = os.MkdirAll("out", directoryPerms)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	outFile := fmt.Sprintf("out/mta-feed-%d.json", *msg.Header.Timestamp)
 
-	err = os.WriteFile(outFile, feedJson, LOWEST_FILE_PERMS)
+	err = os.WriteFile(outFile, feedJson, filePerms)
 	if err != nil {
 		log.Fatal(err)
 	}

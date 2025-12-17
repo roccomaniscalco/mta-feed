@@ -8,8 +8,8 @@
 
 syntax = "proto2";
 package gtfs_realtime_nyct;
-import "realtime/gtfs_realtime.proto";
-option go_package = "./realtime_nyct";
+import "proto/gtfs/gtfs_realtime.proto";
+option go_package = "mta-feed/proto/nyct";
 
 message TripReplacementPeriod {
   // The replacement period is for this route
