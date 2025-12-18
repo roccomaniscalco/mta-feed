@@ -16,7 +16,7 @@ var stopIds = []string{
 func main() {
 	feeds, err := gtfs.FetchFeeds()
 	if err != nil {
-		log.Fatal("Error Fetching Feeds:", err)
+		log.Fatal("Error Fetching Feeds: ", err)
 	}
 
 	departures := gtfs.FindDepartures(stopIds, feeds)
