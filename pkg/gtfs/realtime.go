@@ -15,14 +15,14 @@ import (
 )
 
 var feedUrls = [8]string{
-	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct/gtfs-ace",
-	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct/gtfs-bdfm",
-	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct/gtfs-g",
-	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct/gtfs-jz",
-	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct/gtfs-nqrw",
-	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct/gtfs-l",
-	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct/gtfs",
-	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct/gtfs-si",
+	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace",
+	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm",
+	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-g",
+	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-jz",
+	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-nqrw",
+	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l",
+	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs",
+	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si",
 }
 
 // Fetch feeds for all lines concurrently
