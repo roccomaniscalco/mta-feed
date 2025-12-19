@@ -10,13 +10,13 @@ import (
 )
 
 type Departure struct {
-	stopId        string
-	stopName      string
-	routeId       string
-	finalStopId   string
-	finalStopName string
-	time          int64
-	delay         int32
+	StopId        string
+	StopName      string
+	RouteId       string
+	FinalStopId   string
+	FinalStopName string
+	Time          int64
+	Delay         int32
 }
 
 func FindDepartures(stopIds []string, feeds []*gtfs.FeedMessage) []Departure {
@@ -31,13 +31,11 @@ func FindDepartures(stopIds []string, feeds []*gtfs.FeedMessage) []Departure {
 					if stopTime.GetStopId() == stopId {
 						finalStopId := stopTimes[len(stopTimes)-1].GetStopId()
 						departures = append(departures, Departure{
-							stopId:        stopId,
-							stopName:      StopIdToName[stopId],
-							routeId:       tripUpdate.Trip.GetRouteId(),
-							finalStopId:   finalStopId,
-							finalStopName: StopIdToName[finalStopId],
-							time:          stopTime.GetDeparture().GetTime(),
-							delay:         stopTime.GetDeparture().GetDelay(),
+							StopId:        stopId,
+							RouteId:       tripUpdate.Trip.GetRouteId(),
+							FinalStopId:   finalStopId,
+							Time:          stopTime.GetDeparture().GetTime(),
+							Delay:         stopTime.GetDeparture().GetDelay(),
 						})
 					}
 				}
@@ -93,14 +91,14 @@ func PrintDepartures(departures []Departure) {
 
 	// Create nested map of departures
 	for _, d := range departures {
-		if grouped[d.stopName] == nil {
-			grouped[d.stopName] = make(map[string]map[string][]int64)
+		if grouped[d.StopName] == nil {
+			grouped[d.StopName] = make(map[string]map[string][]int64)
 		}
-		if grouped[d.stopName][d.routeId] == nil {
-			grouped[d.stopName][d.routeId] = make(map[string][]int64)
+		if grouped[d.StopName][d.RouteId] == nil {
+			grouped[d.StopName][d.RouteId] = make(map[string][]int64)
 		}
-		grouped[d.stopName][d.routeId][d.finalStopName] =
-			append(grouped[d.stopName][d.routeId][d.finalStopName], d.time)
+		grouped[d.StopName][d.RouteId][d.FinalStopName] =
+			append(grouped[d.StopName][d.RouteId][d.FinalStopName], d.Time)
 	}
 
 	// Sort fields at each layer

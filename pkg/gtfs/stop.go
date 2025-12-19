@@ -6,14 +6,10 @@ import (
 	"strings"
 )
 
-const STOPS_FILE_PATH = "stops.txt"
-
-var StopIdToName = createStopIdToName()
-
-func createStopIdToName() map[string]string {
+func CreateStopIdToName() map[string]string {
 	stopIdToName := make(map[string]string)
 
-	bytes, err := os.ReadFile(STOPS_FILE_PATH)
+	bytes, err := os.ReadFile(dataDir + stopsPath)
 	if err != nil {
 		log.Fatal(err)
 	}

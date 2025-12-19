@@ -25,7 +25,7 @@ var feedUrls = [8]string{
 	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si",
 }
 
-// Fetch feeds for all lines concurrently
+// Fetch realtime GTFS feeds for all lines concurrently
 func FetchFeeds() ([]*gtfs.FeedMessage, error) {
 	feeds := make([]*gtfs.FeedMessage, len(feedUrls))
 	var g errgroup.Group
@@ -70,11 +70,6 @@ func fetchFeed(feedUrl string) (*gtfs.FeedMessage, error) {
 	return feed, nil
 }
 
-const (
-	directoryPerms = 0755
-	filePerms      = 0644
-)
-
 // Write feed messages to /out. Helpful for debugging
 func writeFeed(msg *gtfs.FeedMessage) {
 	marshallOptions := protojson.MarshalOptions{
@@ -86,12 +81,12 @@ func writeFeed(msg *gtfs.FeedMessage) {
 		log.Fatal(err)
 	}
 
-	err = os.MkdirAll("out", directoryPerms)
+	err = os.MkdirAll(dataDir, dirPerms)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	outFile := fmt.Sprintf("out/mta-feed-%d.json", *msg.Header.Timestamp)
+	outFile := fmt.Sprintf("%smta-feed-%d.json", dataDir, *msg.Header.Timestamp)
 
 	err = os.WriteFile(outFile, feedJson, filePerms)
 	if err != nil {
