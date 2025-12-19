@@ -1,8 +1,8 @@
 package gtfs
 
 import (
-	"fmt"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -54,10 +54,10 @@ func createStopIdToRouteIds(stops []Stop, shapes []Shape) map[string]map[string]
 	stopIdToRouteIds := make(map[string]map[string]bool)
 
 	for _, stop := range stops {
-		stopCoords := [2]float64{stop.StopLat, stop.StopLon}
 		for _, shape := range shapes {
-			shapeCoords := [2]float64{shape.ShapePtLat, shape.ShapePtLon}
-			if stopCoords == shapeCoords {
+			closeLat := math.Abs(stop.StopLat-shape.ShapePtLat) < 0.0001
+			closeLon := math.Abs(stop.StopLon-shape.ShapePtLon) < 0.0001
+			if closeLat && closeLon {
 				routeId := strings.Split(shape.ShapeId, ".")[0]
 				if stopIdToRouteIds[stop.StopId] == nil {
 					stopIdToRouteIds[stop.StopId] = make(map[string]bool)
@@ -226,8 +226,6 @@ func GetRoutes() []Route {
 
 		routes = append(routes, route)
 	}
-
-	fmt.Println(routes)
 
 	return routes
 }
