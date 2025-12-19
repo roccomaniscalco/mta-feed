@@ -48,15 +48,38 @@ func (m model) View() string {
 	return docStyle.Render(m.list.View())
 }
 
+func (m model) RouteBadge(routeId string, fg string, bg string) string {
+	style := lipgloss.NewStyle().
+    Foreground(lipgloss.Color(fg)).
+    Background(lipgloss.Color(bg)).
+    Bold(true).
+    Padding(0, 1).
+    MarginRight(1)
+
+	return style.Render(routeId)
+}
+
 func main() {
 	stations := gtfs.GetParentStations()
+	routes := gtfs.GetRoutes()
 
+	m := model{}
+	
 	items := []list.Item{}
 	for _, station := range stations {
-		items = append(items, item{title: station.StopName, desc: station.StopId})
+		routeBadges := []string{}
+		for _, route := range routes {
+			if _, exists := station.RouteIds[route.RouteId]; exists {
+				badge := m.RouteBadge(route.RouteId, route.RouteTextColor, route.RouteColor)
+				routeBadges = append(routeBadges, badge)
+			}
+		}
+		
+		routeIdsStr := lipgloss.JoinHorizontal(lipgloss.Left, routeBadges...)
+		items = append(items, item{title: station.StopName, desc: routeIdsStr})
 	}
 
-	m := model{list: list.New(items, list.NewDefaultDelegate(), 0, 0)}
+	m.list = list.New(items, list.NewDefaultDelegate(), 0, 0)
 	m.list.Title = "Stations"
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

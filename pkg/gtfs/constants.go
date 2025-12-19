@@ -9,4 +9,5 @@ const (
 	dataDir    = "data/"
 	routesPath = "routes.txt"
 	stopsPath  = "stops.txt"
+	shapesPath = "shapes.txt"
 )

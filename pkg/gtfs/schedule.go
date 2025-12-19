@@ -13,6 +13,7 @@ const scheduleUrl = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip"
 var targetFiles = []string{
 	routesPath,
 	stopsPath,
+	shapesPath,
 }
 
 // Fetch and persist GTFS schedule files
