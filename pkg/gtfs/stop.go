@@ -96,31 +96,61 @@ func GetParentStations() []Stop {
 }
 
 func getStops() []Stop {
-	return parseCSV[Stop](dataDir + stopsPath)
+	stops, err := parseCSV[Stop](dataDir + stopsPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return stops
 }
 
 func getShapes() []Shape {
-	return parseCSV[Shape](dataDir + shapesPath)
+	shapes, err := parseCSV[Shape](dataDir + shapesPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return shapes
 }
 
 func GetRoutes() []Route {
-	return parseCSV[Route](dataDir + routesPath)
+	routes, err := parseCSV[Route](dataDir + routesPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return routes
 }
 
-func parseCSV[T any](filePath string) []T {
-	// Create a zero value to get type information
-	var zero T
-	t := reflect.TypeOf(zero)
-	structs := []T{}
+// CSVError represents errors that occur during CSV parsing
+type CSVError struct {
+	FilePath string
+	Message  string
+}
+
+func (e CSVError) Error() string {
+	return fmt.Sprintf("CSV error in %s: %s", e.FilePath, e.Message)
+}
+
+// parseCSV parses each row in a CSV file into a struct of type R.
+// Each field in R to be parsed must specify a csv tag denoting the column header.
+// CSVError is returned if file could not be parsed.
+func parseCSV[R any](filePath string) ([]R, error) {
+	var zero R
+	r := reflect.TypeOf(zero)
+	rows := []R{}
 
 	// Only accept structs
-	if t.Kind() != reflect.Struct {
-		log.Fatal("parseCsv only works with struct types")
+	if r.Kind() != reflect.Struct {
+		return nil, CSVError{
+			FilePath: filePath,
+			Message:  "parseCSV must be passed a struct for R",
+		}
 	}
 
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error reading file %s: %s", filePath, err))
+		return nil, CSVError{
+			FilePath: filePath,
+			Message:  fmt.Sprintf("parseCSV failed to read file: %v", err),
+		}
 	}
 
 	lines := strings.Split(string(bytes), "\n")
@@ -140,12 +170,12 @@ func parseCSV[T any](filePath string) []T {
 		}
 
 		cells := parseCSVLine(line)
-		newValue := reflect.New(t).Elem()
+		newValue := reflect.New(r).Elem()
 
 		// Populate fields based on CSV cells
-		for i := 0; i < t.NumField(); i++ {
+		for i := 0; i < r.NumField(); i++ {
 			field := newValue.Field(i)
-			fieldType := t.Field(i)
+			fieldType := r.Field(i)
 
 			// Get header from tag or field name
 			header := fieldType.Tag.Get("csv")
@@ -179,10 +209,10 @@ func parseCSV[T any](filePath string) []T {
 			}
 		}
 
-		structs = append(structs, newValue.Interface().(T))
+		rows = append(rows, newValue.Interface().(R))
 	}
 
-	return structs
+	return rows, nil
 }
 
 func parseCSVLine(line string) []string {
