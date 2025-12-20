@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"reflect"
@@ -80,20 +79,22 @@ func (s *Schedule) GetStations() []Stop {
 		}
 	}
 
+	parentStopIdToTripIds := make(map[string][]string)
+	for _, stopTime := range s.StopTimes {
+		parentStopId := stopTime.StopId[:3]
+		parentStopIdToTripIds[parentStopId] =
+			append(parentStopIdToTripIds[parentStopId], stopTime.TripId)
+	}
+
 	for i, station := range parentStations {
-		for _, stopTime := range s.StopTimes {
-			if strings.Contains(stopTime.StopId, station.StopId) {
-				for _, trip := range s.Trips {
-					if stopTime.TripId == trip.TripId {
-						for _, route := range s.Routes {
-							if trip.RouteId == route.RouteId {
-								if parentStations[i].RouteIds == nil {
-									parentStations[i].RouteIds = map[string]bool{}
-								}
-								parentStations[i].RouteIds[route.RouteId] = true
-							}
-						}
+		stopTripIds := parentStopIdToTripIds[station.StopId]
+		for _, stopTripId := range stopTripIds {
+			for _, trip := range s.Trips {
+				if stopTripId == trip.TripId {
+					if parentStations[i].RouteIds == nil {
+						parentStations[i].RouteIds = map[string]bool{}
 					}
+					parentStations[i].RouteIds[trip.RouteId] = true
 				}
 			}
 		}
