@@ -1,41 +1,43 @@
 package gtfs
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 )
 
 type Stop struct {
-	StopId        string
-	StopName      string
-	StopLat       float64
-	StopLon       float64
-	LocationType  string
-	ParentStation string
+	StopId        string  `csv:"stop_id"`
+	StopName      string  `csv:"stop_name"`
+	StopLat       float64 `csv:"stop_lat"`
+	StopLon       float64 `csv:"stop_lon"`
+	LocationType  int     `csv:"location_type"`
+	ParentStation string  `csv:"parent_station"`
 	RouteIds      map[string]bool
 }
 
 type Shape struct {
-	ShapeId    string
-	ShapePtSeq int
-	ShapePtLat float64
-	ShapePtLon float64
+	ShapeId    string  `csv:"shape_id"`
+	ShapePtSeq int     `csv:"shape_pt_sequence"`
+	ShapePtLat float64 `csv:"shape_pt_lat"`
+	ShapePtLon float64 `csv:"shape_pt_lon"`
 }
 
 type Route struct {
-	RouteId        string
-	AgencyId       string
-	RouteShortName string
-	RouteLongName  string
-	RouteDesc      string
-	RouteType      string
-	RouteUrl       string
-	RouteColor     string
-	RouteTextColor string
-	RouteSortOrder int
+	RouteId        string `csv:"route_id"`
+	AgencyId       string `csv:"agency_id"`
+	RouteShortName string `csv:"route_short_name"`
+	RouteLongName  string `csv:"route_long_name"`
+	RouteDesc      string `csv:"route_desc"`
+	RouteType      int    `csv:"route_type"`
+	RouteUrl       string `csv:"route_url"`
+	RouteColor     string `csv:"route_color"`
+	RouteTextColor string `csv:"route_text_color"`
+	RouteSortOrder int    `csv:"route_sort_order"`
 }
 
 func CreateStopIdToName() map[string]string {
@@ -77,7 +79,7 @@ func GetParentStations() []Stop {
 	shapes := getShapes()
 
 	for _, stop := range stops {
-		if stop.LocationType == "1" {
+		if stop.LocationType == 1 {
 			parentStations = append(parentStations, stop)
 		}
 	}
@@ -94,138 +96,116 @@ func GetParentStations() []Stop {
 }
 
 func getStops() []Stop {
-	var stops []Stop
-
-	bytes, err := os.ReadFile(dataDir + stopsPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	content := string(bytes)
-	rows := strings.Split(content, "\n")
-
-	for _, row := range rows {
-		fields := strings.Split(row, ",")
-
-		if len(fields) < 6 {
-			continue
-		}
-
-		StopId := fields[0]
-		StopName := fields[1]
-		StopLat, _ := strconv.ParseFloat(fields[2], 64)
-		StopLon, _ := strconv.ParseFloat(fields[3], 64)
-		LocationType := fields[4]
-		ParentStation := fields[5]
-
-		stop := Stop{
-			StopId:        StopId,
-			StopName:      StopName,
-			StopLat:       StopLat,
-			StopLon:       StopLon,
-			LocationType:  LocationType,
-			ParentStation: ParentStation,
-		}
-
-		stops = append(stops, stop)
-	}
-
-	return stops
+	return parseCSV[Stop](dataDir + stopsPath)
 }
 
 func getShapes() []Shape {
-	var shapes []Shape
-
-	bytes, err := os.ReadFile(dataDir + shapesPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	content := string(bytes)
-	rows := strings.Split(content, "\n")
-
-	for _, row := range rows {
-		fields := strings.Split(row, ",")
-
-		if len(fields) < 4 {
-			continue
-		}
-
-		ShapeId := fields[0]
-		ShapePtSeq, _ := strconv.Atoi(fields[1])
-		ShapePtLat, _ := strconv.ParseFloat(fields[2], 64)
-		ShapePtLon, _ := strconv.ParseFloat(fields[3], 64)
-
-		shape := Shape{
-			ShapeId:    ShapeId,
-			ShapePtSeq: ShapePtSeq,
-			ShapePtLat: ShapePtLat,
-			ShapePtLon: ShapePtLon,
-		}
-
-		shapes = append(shapes, shape)
-	}
-
-	return shapes
+	return parseCSV[Shape](dataDir + shapesPath)
 }
 
 func GetRoutes() []Route {
-	var routes []Route
+	return parseCSV[Route](dataDir + routesPath)
+}
 
-	bytes, err := os.ReadFile(dataDir + routesPath)
-	if err != nil {
-		log.Fatal(err)
+func parseCSV[T any](filePath string) []T {
+	// Create a zero value to get type information
+	var zero T
+	t := reflect.TypeOf(zero)
+	structs := []T{}
+
+	// Only accept structs
+	if t.Kind() != reflect.Struct {
+		log.Fatal("parseCsv only works with struct types")
 	}
 
-	content := string(bytes)
-	rows := strings.Split(content, "\n")
+	bytes, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Error reading file %s: %s", filePath, err))
+	}
 
-	for _, row := range rows {
-		chars := strings.Split(row, "")
+	lines := strings.Split(string(bytes), "\n")
+	headers := parseCSVLine(lines[0])
 
-		fields := []string{}
-		start := 0
-		inQuotes := false
-		for i, char := range chars {
-			if char == "\"" {
-				inQuotes = !inQuotes
-			} else if !inQuotes && (char == "," || i == len(chars)-1) {
-				field := strings.Join(chars[start:i], "")
-				fields = append(fields, field)
-				start = i + 1
-			}
-		}
+	// Map header to column number
+	headerToCol := make(map[string]int)
+	for i, header := range headers {
+		headerToCol[header] = i
+	}
 
-		if len(fields) < 9 {
+	// Process data rows
+	for _, line := range lines[1:] {
+		// Skip blank lines
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 
-		RouteId := fields[0]
-		AgencyId := fields[1]
-		RouteShortName := fields[2]
-		RouteLongName := fields[3]
-		RouteDesc := fields[4]
-		RouteType := fields[5]
-		RouteUrl := fields[6]
-		RouteColor := "#" + fields[7]
-		RouteTextColor := "#" + fields[8]
-		RouteSortOrder, _ := strconv.Atoi(fields[9])
+		cells := parseCSVLine(line)
+		newValue := reflect.New(t).Elem()
 
-		route := Route{
-			RouteId:        RouteId,
-			AgencyId:       AgencyId,
-			RouteShortName: RouteShortName,
-			RouteLongName:  RouteLongName,
-			RouteDesc:      RouteDesc,
-			RouteType:      RouteType,
-			RouteUrl:       RouteUrl,
-			RouteColor:     RouteColor,
-			RouteTextColor: RouteTextColor,
-			RouteSortOrder: RouteSortOrder,
+		// Populate fields based on CSV cells
+		for i := 0; i < t.NumField(); i++ {
+			field := newValue.Field(i)
+			fieldType := t.Field(i)
+
+			// Get header from tag or field name
+			header := fieldType.Tag.Get("csv")
+
+			// Skip fields missing the csv tag
+			if header == "" {
+				continue
+			}
+
+			// Find the corresponding col for header
+			if col, exists := headerToCol[header]; exists && col < len(cells) {
+				cell := cells[col]
+
+				// Coerce cell to the correct field type and set it
+				if field.CanSet() {
+					switch fieldType.Type.Kind() {
+					case reflect.String:
+						val := strings.Trim(cell, "\"")
+						field.SetString(val)
+					case reflect.Int:
+						val, _ := strconv.Atoi(cell)
+						field.SetInt(int64(val))
+					case reflect.Bool:
+						val, _ := strconv.ParseBool(cell)
+						field.SetBool(val)
+					case reflect.Float64:
+						val, _ := strconv.ParseFloat(cell, 64)
+						field.SetFloat(val)
+					}
+				}
+			}
 		}
 
-		routes = append(routes, route)
+		structs = append(structs, newValue.Interface().(T))
 	}
 
-	return routes
+	return structs
+}
+
+func parseCSVLine(line string) []string {
+	cells := []string{}
+	chars := strings.Split(line, "")
+	cellStart := 0
+	inQuotes := false
+
+	for i, char := range chars {
+		if char == "\"" {
+			inQuotes = !inQuotes
+		} else if !inQuotes && char == "," {
+			field := strings.Join(chars[cellStart:i], "")
+			cells = append(cells, field)
+			cellStart = i + 1
+		}
+	}
+
+	// Handle the last field (after final comma or whole line if no commas)
+	if cellStart < len(chars) {
+		field := strings.Join(chars[cellStart:], "")
+		cells = append(cells, field)
+	}
+
+	return cells
 }

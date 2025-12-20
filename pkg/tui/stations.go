@@ -50,11 +50,11 @@ func (m model) View() string {
 
 func (m model) RouteBadge(routeId string, fg string, bg string) string {
 	style := lipgloss.NewStyle().
-    Foreground(lipgloss.Color(fg)).
-    Background(lipgloss.Color(bg)).
-    Bold(true).
-    Padding(0, 1).
-    MarginRight(1)
+		Foreground(lipgloss.Color("#"+fg)).
+		Background(lipgloss.Color("#"+bg)).
+		Bold(true).
+		Padding(0, 1).
+		MarginRight(1)
 
 	return style.Render(routeId)
 }
@@ -64,7 +64,7 @@ func main() {
 	routes := gtfs.GetRoutes()
 
 	m := model{}
-	
+
 	items := []list.Item{}
 	for _, station := range stations {
 		routeBadges := []string{}
@@ -74,7 +74,7 @@ func main() {
 				routeBadges = append(routeBadges, badge)
 			}
 		}
-		
+
 		routeIdsStr := lipgloss.JoinHorizontal(lipgloss.Left, routeBadges...)
 		items = append(items, item{title: station.StopName, desc: routeIdsStr})
 	}
