@@ -60,15 +60,15 @@ func (m model) RouteBadge(routeId string, fg string, bg string) string {
 }
 
 func main() {
-	stations := gtfs.GetParentStations()
-	routes := gtfs.GetRoutes()
+	schedule, _ := gtfs.GetSchedule()
+	stations := gtfs.GetParentStations(schedule.Stops, schedule.Shapes)
 
 	m := model{}
 
 	items := []list.Item{}
 	for _, station := range stations {
 		routeBadges := []string{}
-		for _, route := range routes {
+		for _, route := range schedule.Routes {
 			if _, exists := station.RouteIds[route.RouteId]; exists {
 				badge := m.RouteBadge(route.RouteId, route.RouteTextColor, route.RouteColor)
 				routeBadges = append(routeBadges, badge)

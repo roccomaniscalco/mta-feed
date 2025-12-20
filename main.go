@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-
 	"nyct-feed/pkg/gtfs"
 )
 
@@ -14,24 +13,20 @@ var stopIds = []string{
 }
 
 func main() {
-	err := gtfs.FetchAndStoreSchedule()
+	schedule, err := gtfs.GetSchedule()
 	if err != nil {
-		log.Fatal("Error Fetching Schedule: ", err)
+		log.Println(err)
 	}
 
-	feeds, err := gtfs.FetchFeeds()
-	if err != nil {
-		log.Fatal("Error Fetching Feeds: ", err)
-	}
+	log.Println(schedule.Stops[:10])
+	log.Println(schedule.StopTimes[:10])
+	log.Println(schedule.Trips[:10])
+	log.Println(schedule.Routes[:10])
+	log.Println(schedule.Shapes[:10])
 
-	stopIdToName := gtfs.CreateStopIdToName()
-	departures := gtfs.FindDepartures(stopIds, feeds)
-
-	for i := range departures {
-		departures[i].StopName = stopIdToName[departures[i].StopId]
-		departures[i].FinalStopName = stopIdToName[departures[i].FinalStopId]
-	}
-
-	gtfs.PrintDepartures(departures)
+	// bytes, _ := os.ReadFile("data/stops.txt")
+	// rows, _ := gtfs.ParseCSV(bytes, gtfs.Stop{})
+	// for _, row := range rows[:10] {
+	// 	fmt.Println(row)
+	// }
 }
-
