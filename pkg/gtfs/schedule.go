@@ -72,6 +72,36 @@ type Shape struct {
 	ShapePtLon float64 `csv:"shape_pt_lon"`
 }
 
+func (s *Schedule) GetStations() []Stop {
+	var parentStations []Stop
+	for _, stop := range s.Stops {
+		if stop.LocationType == 1 {
+			parentStations = append(parentStations, stop)
+		}
+	}
+
+	for i, station := range parentStations {
+		for _, stopTime := range s.StopTimes {
+			if strings.Contains(stopTime.StopId, station.StopId) {
+				for _, trip := range s.Trips {
+					if stopTime.TripId == trip.TripId {
+						for _, route := range s.Routes {
+							if trip.RouteId == route.RouteId {
+								if parentStations[i].RouteIds == nil {
+									parentStations[i].RouteIds = map[string]bool{}
+								}
+								parentStations[i].RouteIds[route.RouteId] = true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return parentStations
+}
+
 func CreateStopIdToName(stops []Stop) map[string]string {
 	stopIdToName := make(map[string]string)
 
@@ -82,48 +112,8 @@ func CreateStopIdToName(stops []Stop) map[string]string {
 	return stopIdToName
 }
 
-func createStopIdToRouteIds(stops []Stop, shapes []Shape) map[string]map[string]bool {
-	stopIdToRouteIds := make(map[string]map[string]bool)
-
-	for _, stop := range stops {
-		for _, shape := range shapes {
-			closeLat := math.Abs(stop.StopLat-shape.ShapePtLat) < 0.0001
-			closeLon := math.Abs(stop.StopLon-shape.ShapePtLon) < 0.0001
-			if closeLat && closeLon {
-				routeId := strings.Split(shape.ShapeId, ".")[0]
-				if stopIdToRouteIds[stop.StopId] == nil {
-					stopIdToRouteIds[stop.StopId] = make(map[string]bool)
-				}
-				stopIdToRouteIds[stop.StopId][routeId] = true
-			}
-		}
-	}
-
-	return stopIdToRouteIds
-}
-
-func GetParentStations(stops []Stop, shapes []Shape) []Stop {
-	var parentStations []Stop
-
-	for _, stop := range stops {
-		if stop.LocationType == 1 {
-			parentStations = append(parentStations, stop)
-		}
-	}
-
-	stopIdToRouteIds := createStopIdToRouteIds(parentStations, shapes)
-
-	for i, station := range parentStations {
-		if routeIds, exists := stopIdToRouteIds[station.StopId]; exists {
-			parentStations[i].RouteIds = routeIds
-		}
-	}
-
-	return parentStations
-}
-
 // GetSchedule returns a GTFS Schedule struct containing all static files.
-// The Schedule is requested then stored when missing or stale. 
+// The Schedule is requested then stored when missing or stale.
 // Otherwise its files are read and parsed from storage.
 func GetSchedule() (*Schedule, error) {
 	var schedule Schedule
@@ -157,7 +147,7 @@ func GetSchedule() (*Schedule, error) {
 	for i := 0; i < scheduleType.NumField(); i++ {
 		field := scheduleType.Field(i)
 		fileName := field.Tag.Get("file")
-		fileRowType := field.Type.Elem() 
+		fileRowType := field.Type.Elem()
 		log.Println(fileName, fileRowType)
 
 		bytes, err := os.ReadFile(dataDir + fileName)
@@ -167,20 +157,20 @@ func GetSchedule() (*Schedule, error) {
 
 		switch fileRowType {
 		case reflect.TypeOf(Stop{}):
-				rows, _ := parseCSV(bytes, Stop{})
-				schedule.Stops = rows
+			rows, _ := parseCSV(bytes, Stop{})
+			schedule.Stops = rows
 		case reflect.TypeOf(StopTime{}):
-				rows, _ := parseCSV(bytes, StopTime{})
-				schedule.StopTimes = rows
+			rows, _ := parseCSV(bytes, StopTime{})
+			schedule.StopTimes = rows
 		case reflect.TypeOf(Trip{}):
-				rows, _ := parseCSV(bytes, Trip{})
-				schedule.Trips = rows
+			rows, _ := parseCSV(bytes, Trip{})
+			schedule.Trips = rows
 		case reflect.TypeOf(Route{}):
-				rows, _ := parseCSV(bytes, Route{})
-				schedule.Routes = rows
+			rows, _ := parseCSV(bytes, Route{})
+			schedule.Routes = rows
 		case reflect.TypeOf(Shape{}):
-				rows, _ := parseCSV(bytes, Shape{})
-				schedule.Shapes = rows
+			rows, _ := parseCSV(bytes, Shape{})
+			schedule.Shapes = rows
 		}
 	}
 
@@ -355,4 +345,3 @@ func storeSchedule(file *zip.File) error {
 
 	return nil
 }
-

@@ -48,7 +48,7 @@ func (m model) View() string {
 	return docStyle.Render(m.list.View())
 }
 
-func (m model) RouteBadge(routeId string, fg string, bg string) string {
+func (m model) RouteBadge(routeShortName string, fg string, bg string) string {
 	style := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#"+fg)).
 		Background(lipgloss.Color("#"+bg)).
@@ -56,12 +56,12 @@ func (m model) RouteBadge(routeId string, fg string, bg string) string {
 		Padding(0, 1).
 		MarginRight(1)
 
-	return style.Render(routeId)
+	return style.Render(routeShortName)
 }
 
 func main() {
 	schedule, _ := gtfs.GetSchedule()
-	stations := gtfs.GetParentStations(schedule.Stops, schedule.Shapes)
+	stations := schedule.GetStations()
 
 	m := model{}
 
@@ -70,7 +70,7 @@ func main() {
 		routeBadges := []string{}
 		for _, route := range schedule.Routes {
 			if _, exists := station.RouteIds[route.RouteId]; exists {
-				badge := m.RouteBadge(route.RouteId, route.RouteTextColor, route.RouteColor)
+				badge := m.RouteBadge(route.RouteShortName, route.RouteTextColor, route.RouteColor)
 				routeBadges = append(routeBadges, badge)
 			}
 		}
