@@ -1,0 +1,3 @@
+package gtfs
+
+func getStations()

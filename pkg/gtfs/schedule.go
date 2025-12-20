@@ -122,7 +122,9 @@ func GetParentStations(stops []Stop, shapes []Shape) []Stop {
 	return parentStations
 }
 
-// 
+// GetSchedule returns a GTFS Schedule struct containing all static files.
+// The Schedule is requested then stored when missing or stale. 
+// Otherwise its files are read and parsed from storage.
 func GetSchedule() (*Schedule, error) {
 	var schedule Schedule
 	scheduleType := reflect.TypeOf(schedule)
@@ -165,19 +167,19 @@ func GetSchedule() (*Schedule, error) {
 
 		switch fileRowType {
 		case reflect.TypeOf(Stop{}):
-				rows, _ := ParseCSV(bytes, Stop{})
+				rows, _ := parseCSV(bytes, Stop{})
 				schedule.Stops = rows
 		case reflect.TypeOf(StopTime{}):
-				rows, _ := ParseCSV(bytes, StopTime{})
+				rows, _ := parseCSV(bytes, StopTime{})
 				schedule.StopTimes = rows
 		case reflect.TypeOf(Trip{}):
-				rows, _ := ParseCSV(bytes, Trip{})
+				rows, _ := parseCSV(bytes, Trip{})
 				schedule.Trips = rows
 		case reflect.TypeOf(Route{}):
-				rows, _ := ParseCSV(bytes, Route{})
+				rows, _ := parseCSV(bytes, Route{})
 				schedule.Routes = rows
 		case reflect.TypeOf(Shape{}):
-				rows, _ := ParseCSV(bytes, Shape{})
+				rows, _ := parseCSV(bytes, Shape{})
 				schedule.Shapes = rows
 		}
 	}
@@ -188,7 +190,7 @@ func GetSchedule() (*Schedule, error) {
 // parseCSV accept CSV bytes and parses each row into a struct of type R.
 // Each field in R to be parsed must specify a csv tag denoting the column header.
 // CSVError is returned if file could not be parsed.
-func ParseCSV[R any](bytes []byte, row R) ([]R, error) {
+func parseCSV[R any](bytes []byte, row R) ([]R, error) {
 	r := reflect.TypeOf(row)
 	rows := []R{}
 
