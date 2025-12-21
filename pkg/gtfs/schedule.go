@@ -29,7 +29,7 @@ type Stop struct {
 	StopName      string  `csv:"stop_name"`
 	StopLat       float64 `csv:"stop_lat"`
 	StopLon       float64 `csv:"stop_lon"`
-	LocationType  int     `csv:"location_type"`
+	LocationType  int     `csv:"location_type"` // 0 = Platform, 1 = Station
 	ParentStation string  `csv:"parent_station"`
 	RouteIds      map[string]bool
 }
@@ -71,32 +71,34 @@ type Shape struct {
 	ShapePtLon float64 `csv:"shape_pt_lon"`
 }
 
+// GetStations returns a subset of Stops where LocationType == 1.
+// Each Stop includes a set of RouteIds that pass through the station.
 func (s *Schedule) GetStations() []Stop {
-	var parentStations []Stop
-	for _, stop := range s.Stops {
-		if stop.LocationType == 1 {
-			parentStations = append(parentStations, stop)
+	// Build trip ID to route ID map
+	tripIdToRouteId := make(map[string]string)
+	for _, trip := range s.Trips {
+		tripIdToRouteId[trip.TripId] = trip.RouteId
+	}
+
+	// Build station ID to route IDs map directly
+	stationIdToRouteIds := make(map[string]map[string]bool)
+	for _, stopTime := range s.StopTimes {
+		// Shave off the "N" or "S" from StopId to get parent StopId
+		parentStopId := stopTime.StopId[:3]
+		if routeId, exists := tripIdToRouteId[stopTime.TripId]; exists {
+			if stationIdToRouteIds[parentStopId] == nil {
+				stationIdToRouteIds[parentStopId] = make(map[string]bool)
+			}
+			stationIdToRouteIds[parentStopId][routeId] = true
 		}
 	}
 
-	parentStopIdToTripIds := make(map[string][]string)
-	for _, stopTime := range s.StopTimes {
-		parentStopId := stopTime.StopId[:3]
-		parentStopIdToTripIds[parentStopId] =
-			append(parentStopIdToTripIds[parentStopId], stopTime.TripId)
-	}
-
-	for i, station := range parentStations {
-		stopTripIds := parentStopIdToTripIds[station.StopId]
-		for _, stopTripId := range stopTripIds {
-			for _, trip := range s.Trips {
-				if stopTripId == trip.TripId {
-					if parentStations[i].RouteIds == nil {
-						parentStations[i].RouteIds = map[string]bool{}
-					}
-					parentStations[i].RouteIds[trip.RouteId] = true
-				}
-			}
+	// Filter and populate stations
+	var parentStations []Stop
+	for _, stop := range s.Stops {
+		if stop.LocationType == 1 {
+			stop.RouteIds = stationIdToRouteIds[stop.StopId]
+			parentStations = append(parentStations, stop)
 		}
 	}
 
