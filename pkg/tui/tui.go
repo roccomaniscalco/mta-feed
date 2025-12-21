@@ -78,6 +78,7 @@ func main() {
 
 	list := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	list.Title = "Stations"
+	list.SetShowPagination(false)
 
 	m := model{
 		list: list,
