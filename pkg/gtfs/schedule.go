@@ -3,11 +3,13 @@ package gtfs
 import (
 	"archive/zip"
 	"bytes"
+	"cmp"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -93,15 +95,15 @@ func (s *Schedule) GetStations() []Stop {
 	}
 
 	// Filter and populate stations
-	var parentStations []Stop
+	var stations []Stop
 	for _, stop := range s.Stops {
 		if stop.LocationType == 1 {
 			stop.RouteIds = stationIdToRouteIds[stop.StopId]
-			parentStations = append(parentStations, stop)
+			stations = append(stations, stop)
 		}
 	}
 
-	return parentStations
+	return stations
 }
 
 func CreateStopIdToName(stops []Stop) map[string]string {
