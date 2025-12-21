@@ -104,13 +104,11 @@ func (s *Schedule) GetStations() []Stop {
 	return stations
 }
 
-func CreateStopIdToName(stops []Stop) map[string]string {
+func (s *Schedule) GetStopIdToName() map[string]string {
 	stopIdToName := make(map[string]string)
-
-	for _, stop := range stops {
+	for _, stop := range s.Stops {
 		stopIdToName[stop.StopId] = stop.StopName
 	}
-
 	return stopIdToName
 }
 

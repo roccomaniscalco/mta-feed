@@ -13,12 +13,13 @@ import (
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 type item struct {
-	title, desc string
+	station     gtfs.Stop
+	routeBadges string
 }
 
-func (i item) Title() string       { return i.title }
-func (i item) Description() string { return i.desc }
-func (i item) FilterValue() string { return i.title }
+func (i item) Title() string       { return i.station.StopName }
+func (i item) Description() string { return i.routeBadges }
+func (i item) FilterValue() string { return i.station.StopName }
 
 type model struct {
 	list list.Model
@@ -48,39 +49,39 @@ func (m model) View() string {
 	return docStyle.Render(m.list.View())
 }
 
-func (m model) RouteBadge(routeShortName string, fg string, bg string) string {
+func RouteBadge(route gtfs.Route) string {
 	style := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#"+fg)).
-		Background(lipgloss.Color("#"+bg)).
+		Foreground(lipgloss.Color("#"+route.RouteTextColor)).
+		Background(lipgloss.Color("#"+route.RouteColor)).
 		Bold(true).
 		Padding(0, 1).
 		MarginRight(1)
 
-	return style.Render(routeShortName)
+	return style.Render(route.RouteShortName)
 }
 
 func main() {
 	schedule := gtfs.GetSchedule()
 	stations := schedule.GetStations()
 
-	m := model{}
-
 	items := []list.Item{}
 	for _, station := range stations {
 		routeBadges := []string{}
 		for _, route := range schedule.Routes {
 			if _, exists := station.RouteIds[route.RouteId]; exists {
-				badge := m.RouteBadge(route.RouteShortName, route.RouteTextColor, route.RouteColor)
-				routeBadges = append(routeBadges, badge)
+				routeBadges = append(routeBadges, RouteBadge(route))
 			}
 		}
-
-		routeIdsStr := lipgloss.JoinHorizontal(lipgloss.Left, routeBadges...)
-		items = append(items, item{title: station.StopName, desc: routeIdsStr})
+		routeBadgesStr := lipgloss.JoinHorizontal(lipgloss.Left, routeBadges...)
+		items = append(items, item{station: station, routeBadges: routeBadgesStr})
 	}
 
-	m.list = list.New(items, list.NewDefaultDelegate(), 0, 0)
-	m.list.Title = "Stations"
+	list := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	list.Title = "Stations"
+
+	m := model{
+		list: list,
+	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
