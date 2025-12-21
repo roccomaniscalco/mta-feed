@@ -13,10 +13,7 @@ var stopIds = []string{
 }
 
 func main() {
-	schedule, err := gtfs.GetSchedule()
-	if err != nil {
-		log.Println(err)
-	}
+	schedule := gtfs.GetSchedule()
 
 	log.Println(schedule.Stops[:10])
 	log.Println(schedule.StopTimes[:10])

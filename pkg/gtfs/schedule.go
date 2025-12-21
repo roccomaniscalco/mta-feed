@@ -3,7 +3,6 @@ package gtfs
 import (
 	"archive/zip"
 	"bytes"
-	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -118,7 +117,7 @@ func CreateStopIdToName(stops []Stop) map[string]string {
 // GetSchedule returns a GTFS schedule containing all schedule files.
 // The schedule zip file is requested and stored when missing or stale.
 // The schedule files are read and parsed from storage.
-func GetSchedule() (*Schedule, error) {
+func GetSchedule() *Schedule {
 	var schedule Schedule
 	scheduleType := reflect.TypeOf(schedule)
 
@@ -141,54 +140,47 @@ func GetSchedule() (*Schedule, error) {
 	}
 
 	if isScheduleDirty {
-		if err := fetchAndStoreSchedule(); err != nil {
-			return nil, err
-		}
+		fetchAndStoreSchedule()
 	}
 
 	// Parse and set each item on schedule
 	for i := 0; i < scheduleType.NumField(); i++ {
 		field := scheduleType.Field(i)
-		fileName := field.Tag.Get("file")
 		fileRowType := field.Type.Elem()
-		log.Println(fileName, fileRowType)
+		fileName := field.Tag.Get("file")
+		filePath := dataDir + fileName
 
-		bytes, err := os.ReadFile(dataDir + fileName)
+		bytes, err := os.ReadFile(filePath)
 		if err != nil {
-			return nil, err
+			log.Panicf("failed to read schedule file: %s", filePath)
 		}
 
 		switch fileRowType {
 		case reflect.TypeOf(Stop{}):
-			rows, _ := parseCSV(bytes, Stop{})
-			schedule.Stops = rows
+			schedule.Stops = parseCSV(bytes, Stop{})
 		case reflect.TypeOf(StopTime{}):
-			rows, _ := parseCSV(bytes, StopTime{})
-			schedule.StopTimes = rows
+			schedule.StopTimes = parseCSV(bytes, StopTime{})
 		case reflect.TypeOf(Trip{}):
-			rows, _ := parseCSV(bytes, Trip{})
-			schedule.Trips = rows
+			schedule.Trips = parseCSV(bytes, Trip{})
 		case reflect.TypeOf(Route{}):
-			rows, _ := parseCSV(bytes, Route{})
-			schedule.Routes = rows
+			schedule.Routes = parseCSV(bytes, Route{})
 		case reflect.TypeOf(Shape{}):
-			rows, _ := parseCSV(bytes, Shape{})
-			schedule.Shapes = rows
+			schedule.Shapes = parseCSV(bytes, Shape{})
 		}
 	}
 
-	return &schedule, nil
+	return &schedule
 }
 
 // parseCSV accepts a CSV as bytes and parses each row into a struct of type R.
 // Each field in R to be parsed must specify a csv tag denoting its column header.
-func parseCSV[R any](bytes []byte, row R) ([]R, error) {
+func parseCSV[R any](bytes []byte, row R) []R {
 	r := reflect.TypeOf(row)
 	rows := []R{}
 
 	// Only accept structs
 	if r.Kind() != reflect.Struct {
-		return nil, errors.New("parseCSV must be passed a struct for R")
+		log.Panicf("row must be of type struct: received %s", r.Kind())
 	}
 
 	lines := strings.Split(string(bytes), "\n")
@@ -200,7 +192,7 @@ func parseCSV[R any](bytes []byte, row R) ([]R, error) {
 		headerToCol[header] = i
 	}
 
-	// Process data rows
+	// Map each CSV line to a new row struct
 	for _, line := range lines[1:] {
 		// Skip blank lines
 		if strings.TrimSpace(line) == "" {
@@ -208,49 +200,30 @@ func parseCSV[R any](bytes []byte, row R) ([]R, error) {
 		}
 
 		cells := parseCSVLine(line)
-		newValue := reflect.New(r).Elem()
+		newRow := reflect.New(r).Elem()
 
-		// Populate fields based on CSV cells
+		// Populate row values from CSV cells
 		for i := 0; i < r.NumField(); i++ {
-			field := newValue.Field(i)
-			fieldType := r.Field(i)
+			fieldValue := newRow.Field(i)
+			fieldType := newRow.Type().Field(i)
 
-			// Get header from tag or field name
+			// Get CSV header from tag or skip
 			header := fieldType.Tag.Get("csv")
-
-			// Skip fields missing the csv tag
 			if header == "" {
 				continue
 			}
 
-			// Find the corresponding col for header
+			// Set row field to parsed cell value
 			if col, exists := headerToCol[header]; exists && col < len(cells) {
 				cell := cells[col]
-
-				// Coerce cell to the correct field type and set it
-				if field.CanSet() {
-					switch fieldType.Type.Kind() {
-					case reflect.String:
-						val := strings.Trim(cell, "\"")
-						field.SetString(val)
-					case reflect.Int:
-						val, _ := strconv.Atoi(cell)
-						field.SetInt(int64(val))
-					case reflect.Bool:
-						val, _ := strconv.ParseBool(cell)
-						field.SetBool(val)
-					case reflect.Float64:
-						val, _ := strconv.ParseFloat(cell, 64)
-						field.SetFloat(val)
-					}
-				}
+				parseCSVCellValue(cell, fieldValue, fieldType)
 			}
 		}
 
-		rows = append(rows, newValue.Interface().(R))
+		rows = append(rows, newRow.Interface().(R))
 	}
 
-	return rows, nil
+	return rows
 }
 
 func parseCSVLine(line string) []string {
@@ -278,72 +251,83 @@ func parseCSVLine(line string) []string {
 	return cells
 }
 
-// fetchAndStoreSchedule requests a GTFS schedule zip file and stores its contents.
-func fetchAndStoreSchedule() error {
-	files, err := fetchSchedule()
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		if err := storeSchedule(file); err != nil {
-			return err
+// Parse cell to the corresponding field type and set field value
+func parseCSVCellValue(cell string, fieldValue reflect.Value, fieldType reflect.StructField) {
+	if fieldValue.CanSet() {
+		switch fieldType.Type.Kind() {
+		case reflect.String:
+			val := strings.Trim(cell, "\"")
+			fieldValue.SetString(val)
+		case reflect.Int:
+			val, err := strconv.Atoi(cell)
+			if err != nil {
+				log.Printf("warning: failed to parse field %s: %v", fieldType.Name, err)
+			}
+			fieldValue.SetInt(int64(val))
+		case reflect.Bool:
+			val, err := strconv.ParseBool(cell)
+			if err != nil {
+				log.Printf("warning: failed to parse field %s: %v", fieldType.Name, err)
+			}
+			fieldValue.SetBool(val)
+		case reflect.Float64:
+			val, err := strconv.ParseFloat(cell, 64)
+			if err != nil {
+				log.Printf("warning: failed to parse field %s: %v", fieldType.Name, err)
+			}
+			fieldValue.SetFloat(val)
+		default:
+			log.Panicf("unsupported CSV field type: %v for field %s", fieldType.Type.Kind(), fieldType.Name)
 		}
 	}
-
-	return nil
 }
 
-func fetchSchedule() ([]*zip.File, error) {
-	// Download the ZIP file
+// fetchAndStoreSchedule requests a GTFS schedule ZIP folder and stores its files.
+func fetchAndStoreSchedule() {
+	// Download the ZIP folder
 	resp, err := http.Get(scheduleUrl)
 	if err != nil {
-		return nil, err
+		log.Panicf("failed to download schedule from %s: %v", scheduleUrl, err)
 	}
 	defer resp.Body.Close()
 
 	// Read the ZIP data into memory
 	zipData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		log.Panicf("failed to read ZIP data from response: %v", err)
 	}
 
 	// Create a ZIP reader
 	zipReader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
-		return nil, err
+		log.Panicf("failed to create ZIP reader: %v", err)
 	}
 
-	// Gather the files
-	files := []*zip.File{}
+	// Store each schedule file
 	for _, file := range zipReader.File {
-		files = append(files, file)
+		storeScheduleFile(file)
 	}
-
-	return files, nil
 }
 
-func storeSchedule(file *zip.File) error {
+func storeScheduleFile(file *zip.File) {
 	rc, err := file.Open()
 	if err != nil {
-		return err
+		log.Panicf("failed to open zip file %s: %v", file.Name, err)
 	}
 	defer rc.Close()
 
 	data, err := io.ReadAll(rc)
 	if err != nil {
-		return err
+		log.Panicf("failed to read data from zip file %s: %v", file.Name, err)
 	}
 
 	// Ensure the data directory exists
 	if err := os.MkdirAll(dataDir, dirPerms); err != nil {
-		return err
+		log.Panicf("failed to create data directory %s: %v", dataDir, err)
 	}
 
 	err = os.WriteFile(dataDir+file.Name, data, filePerms)
 	if err != nil {
-		return err
+		log.Panicf("failed to write file %s: %v", dataDir+file.Name, err)
 	}
-
-	return nil
 }

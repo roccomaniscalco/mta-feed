@@ -60,7 +60,7 @@ func (m model) RouteBadge(routeShortName string, fg string, bg string) string {
 }
 
 func main() {
-	schedule, _ := gtfs.GetSchedule()
+	schedule := gtfs.GetSchedule()
 	stations := schedule.GetStations()
 
 	m := model{}
