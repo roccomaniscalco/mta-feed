@@ -3,13 +3,11 @@ package gtfs
 import (
 	"archive/zip"
 	"bytes"
-	"cmp"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
