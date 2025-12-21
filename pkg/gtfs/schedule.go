@@ -71,8 +71,8 @@ type Shape struct {
 	ShapePtLon float64 `csv:"shape_pt_lon"`
 }
 
-// GetStations returns a subset of Stops where LocationType == 1.
-// Each Stop includes a set of RouteIds that pass through the station.
+// GetStations returns a subset of Stops that are considered to be stations.
+// Each Stop returned includes a set of RouteIds that pass through the station.
 func (s *Schedule) GetStations() []Stop {
 	// Build trip ID to route ID map
 	tripIdToRouteId := make(map[string]string)
@@ -115,9 +115,9 @@ func CreateStopIdToName(stops []Stop) map[string]string {
 	return stopIdToName
 }
 
-// GetSchedule returns a GTFS Schedule struct containing all static files.
-// The Schedule is requested then stored when missing or stale.
-// Otherwise its files are read and parsed from storage.
+// GetSchedule returns a GTFS schedule containing all schedule files.
+// The schedule zip file is requested and stored when missing or stale.
+// The schedule files are read and parsed from storage.
 func GetSchedule() (*Schedule, error) {
 	var schedule Schedule
 	scheduleType := reflect.TypeOf(schedule)
@@ -180,9 +180,8 @@ func GetSchedule() (*Schedule, error) {
 	return &schedule, nil
 }
 
-// parseCSV accept CSV bytes and parses each row into a struct of type R.
-// Each field in R to be parsed must specify a csv tag denoting the column header.
-// CSVError is returned if file could not be parsed.
+// parseCSV accepts a CSV as bytes and parses each row into a struct of type R.
+// Each field in R to be parsed must specify a csv tag denoting its column header.
 func parseCSV[R any](bytes []byte, row R) ([]R, error) {
 	r := reflect.TypeOf(row)
 	rows := []R{}
@@ -279,7 +278,7 @@ func parseCSVLine(line string) []string {
 	return cells
 }
 
-// fetchAndStoreSchedule requests a schedule zip file and stores its contents
+// fetchAndStoreSchedule requests a GTFS schedule zip file and stores its contents.
 func fetchAndStoreSchedule() error {
 	files, err := fetchSchedule()
 	if err != nil {
