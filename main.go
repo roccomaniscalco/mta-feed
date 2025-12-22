@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
-	"nyct-feed/pkg/gtfs"
+	"nyct-feed/pkg/tui"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 var stopIds = []string{
@@ -13,17 +15,9 @@ var stopIds = []string{
 }
 
 func main() {
-	schedule := gtfs.GetSchedule()
-
-	log.Println(schedule.Stops[:10])
-	log.Println(schedule.StopTimes[:10])
-	log.Println(schedule.Trips[:10])
-	log.Println(schedule.Routes[:10])
-	log.Println(schedule.Shapes[:10])
-
-	// bytes, _ := os.ReadFile("data/stops.txt")
-	// rows, _ := gtfs.ParseCSV(bytes, gtfs.Stop{})
-	// for _, row := range rows[:10] {
-	// 	fmt.Println(row)
-	// }
+	m := tui.NewModel()
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		log.Fatalf("Error running program:", err)
+	}
 }

@@ -1,33 +1,30 @@
-package main
+package tui
 
 import (
-	"fmt"
 	"nyct-feed/pkg/gtfs"
-	"os"
+	splash "nyct-feed/pkg/tui/splash"
+	"time"
 
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-var docStyle = lipgloss.NewStyle().Margin(1, 2)
-
-type item struct {
-	station     gtfs.Stop
-	routeBadges string
+type model struct {
+	docStyle lipgloss.Style
+	schedule gtfs.Schedule
+	stations []gtfs.Stop
+	loading  bool
 }
 
-func (i item) Title() string       { return i.station.StopName }
-func (i item) Description() string { return i.routeBadges }
-func (i item) FilterValue() string { return i.station.StopName }
-
-type model struct {
-	list         list.Model
-	selectedItem item
+func NewModel() model {
+	return model{
+		loading:  true,
+		docStyle: lipgloss.NewStyle().Margin(1, 2),
+	}
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return getSchedule()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -37,110 +34,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v)
+		h, v := m.docStyle.GetFrameSize()
+		m.docStyle = m.docStyle.Width(msg.Width - h).Height(msg.Height - v)
+	case gotScheduleMsg:
+		m.schedule = gtfs.Schedule(msg)
+		m.stations = m.schedule.GetStations()
+		m.loading = false
 	}
 
 	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
-
-	// Keep a snapshot of the last selected item to preserve while filtering
-	if !m.list.SettingFilter() {
-		if item, ok := m.list.SelectedItem().(item); ok {
-			m.selectedItem = item
-		}
-	}
-
-	if m.list.SettingFilter() {
-		m.list.Styles.TitleBar = m.list.Styles.TitleBar.
-			BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
-	} else {
-		m.list.Styles.TitleBar = m.list.Styles.TitleBar.
-			BorderForeground(lipgloss.AdaptiveColor{Light: "#C2B8C2", Dark: "#4D4D4D"})
-	}
-
-	style := lipgloss.NewStyle().
-		UnsetBackground().
-		Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
-	if m.list.FilterValue() == "" {
-		m.list.Title = Kbd("/") + style.Render("Search Stations")
-	} else {
-		m.list.Title = Kbd("/") + style.Render(m.list.FilterValue())
-	}
-
 	return m, cmd
 }
 
 func (m model) View() string {
-	return docStyle.Render(m.list.View(), m.selectedItem.Title())
-}
-
-func RouteBadge(route gtfs.Route) string {
-	style := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#"+route.RouteTextColor)).
-		Background(lipgloss.Color("#"+route.RouteColor)).
-		Bold(true).
-		Padding(0, 1).
-		MarginRight(1)
-
-	return style.Render(route.RouteShortName)
-}
-
-func Kbd(key string) string {
-	style := lipgloss.NewStyle().
-		MarginRight(1).
-		Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
-
-	return style.Render(key)
-}
-
-func main() {
-	schedule := gtfs.GetSchedule()
-	stations := schedule.GetStations()
-
-	items := []list.Item{}
-	for _, station := range stations {
-		routeBadges := []string{}
-		for _, route := range schedule.Routes {
-			if _, exists := station.RouteIds[route.RouteId]; exists {
-				routeBadges = append(routeBadges, RouteBadge(route))
-			}
-		}
-		routeBadgesStr := lipgloss.JoinHorizontal(lipgloss.Left, routeBadges...)
-		items = append(items, item{station: station, routeBadges: routeBadgesStr})
+	if m.loading {
+	return m.docStyle.
+		Align(lipgloss.Center, lipgloss.Center).
+		Render(splash.Model{}.View())
 	}
+	return "loaded!"
+}
 
-	list := list.New(items, list.NewDefaultDelegate(), 0, 0)
+type gotScheduleMsg gtfs.Schedule
 
-	list.SetShowPagination(false)
-	list.SetShowHelp(false)
-	list.SetShowStatusBar(false)
-
-	list.Styles.TitleBar = lipgloss.NewStyle().
-		Width(40).
-		Padding(0, 1).
-		MarginBottom(1).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.AdaptiveColor{Light: "#C2B8C2", Dark: "#4D4D4D"})
-
-	list.Styles.Title = lipgloss.NewStyle().
-		UnsetBackground().
-		Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
-
-	list.FilterInput.Prompt = Kbd("/")
-	list.FilterInput.Placeholder = "Search Stations"
-	list.FilterInput.TextStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
-
-	m := model{
-		list:         list,
-		selectedItem: items[0].(item),
-	}
-
-	p := tea.NewProgram(m, tea.WithAltScreen())
-
-	if _, err := p.Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
+func getSchedule() tea.Cmd {
+	return func() tea.Msg {
+		time.Sleep(200 * time.Millisecond)
+		schedule := gtfs.GetSchedule()
+		return gotScheduleMsg(schedule)
 	}
 }
