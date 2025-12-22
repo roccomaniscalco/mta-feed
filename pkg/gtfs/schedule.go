@@ -13,7 +13,10 @@ import (
 	"time"
 )
 
-const scheduleUrl = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip"
+const (
+	scheduleUrl = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip"
+	scheduleTtl = 24 * time.Hour
+)
 
 type Schedule struct {
 	Stops     []Stop     `file:"stops.txt"`
@@ -115,14 +118,14 @@ func (s *Schedule) GetStopIdToName() map[string]string {
 // GetSchedule returns a GTFS schedule containing all schedule files.
 // The schedule zip file is requested and stored when missing or stale.
 // The schedule files are read and parsed from storage.
-func GetSchedule() *Schedule {
+func GetSchedule() Schedule {
 	var schedule Schedule
 	scheduleType := reflect.TypeOf(schedule)
 
 	currentTime := time.Now()
 	isScheduleDirty := false
 
-	// Schedule is dirty if any file is missing or older than 24 hrs
+	// Schedule is dirty if any file is missing or expired
 	for i := 0; i < scheduleType.NumField(); i++ {
 		fileName := scheduleType.Field(i).Tag.Get("file")
 
@@ -131,7 +134,7 @@ func GetSchedule() *Schedule {
 			isScheduleDirty = true
 			break
 		}
-		if currentTime.Sub(fileInfo.ModTime()).Hours() > 24 {
+		if currentTime.Sub(fileInfo.ModTime()) > scheduleTtl {
 			isScheduleDirty = true
 			break
 		}
@@ -167,7 +170,7 @@ func GetSchedule() *Schedule {
 		}
 	}
 
-	return &schedule
+	return schedule
 }
 
 // parseCSV accepts a CSV as bytes and parses each row into a struct of type R.
@@ -258,7 +261,7 @@ func parseCSVCellValue(cell string, fieldValue reflect.Value, fieldType reflect.
 			fieldValue.SetString(val)
 		case reflect.Int:
 			val, err := strconv.Atoi(cell)
-			if err != nil {
+			if err != nil && cell != "" {
 				log.Printf("warning: failed to parse field %s: %v", fieldType.Name, err)
 			}
 			fieldValue.SetInt(int64(val))
