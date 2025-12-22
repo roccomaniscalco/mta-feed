@@ -22,7 +22,8 @@ func (i item) Description() string { return i.routeBadges }
 func (i item) FilterValue() string { return i.station.StopName }
 
 type model struct {
-	list list.Model
+	list         list.Model
+	selectedItem item
 }
 
 func (m model) Init() tea.Cmd {
@@ -42,11 +43,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
+
+	// Keep a snapshot of the last selected item to preserve while filtering
+	if m.list.FilterState().String() != "filtering" {
+		if item, ok := m.list.SelectedItem().(item); ok {
+			m.selectedItem = item
+		}
+	}
+
 	return m, cmd
 }
 
 func (m model) View() string {
-	return docStyle.Render(m.list.View())
+	return docStyle.Render(m.list.View(), m.selectedItem.Title())
 }
 
 func RouteBadge(route gtfs.Route) string {
@@ -81,7 +90,8 @@ func main() {
 	list.SetShowPagination(false)
 
 	m := model{
-		list: list,
+		list:         list,
+		selectedItem: items[0].(item),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
