@@ -1,4 +1,10 @@
 # NYCT Feed
+                     __ 
+   ____  __  _______/ /_
+  / __ \/ / / / ___/ __/
+ / / / / /_/ / /__/ /_  
+/_/ /_/\__, /\___/\___)  
+      (____/            
 
 Realtime NYC transit updates. Data provided by the [MTA](https://www.mta.info/developers).
 
