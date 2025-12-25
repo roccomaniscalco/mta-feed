@@ -16,7 +16,7 @@ var stopIds = []string{
 
 func main() {
 	m := tui.NewModel()
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(&m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Error running program:", err)
 	}

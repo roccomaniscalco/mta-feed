@@ -8,6 +8,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const width = 40
+
 type item struct {
 	station     gtfs.Stop
 	routeBadges string
@@ -22,14 +24,14 @@ type Model struct {
 	selectedItem item
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.list.SetHeight(msg.Height - 2)
+		m.list.SetHeight(msg.Height)
 	}
 
 	var cmd tea.Cmd
@@ -54,19 +56,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		UnsetBackground().
 		Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
 	if m.list.FilterValue() == "" {
-		m.list.Title = Kbd("/") + style.Render("Search Stations")
+		m.list.Title = renderKbd("/") + style.Render("Search Stations")
 	} else {
-		m.list.Title = Kbd("/") + style.Render(m.list.FilterValue())
+		m.list.Title = renderKbd("/") + style.Render(m.list.FilterValue())
 	}
 
 	return m, cmd
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	return m.list.View()
 }
 
-func RouteBadge(route gtfs.Route) string {
+func renderRouteBadge(route gtfs.Route) string {
 	style := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#"+route.RouteTextColor)).
 		Background(lipgloss.Color("#"+route.RouteColor)).
@@ -77,7 +79,7 @@ func RouteBadge(route gtfs.Route) string {
 	return style.Render(route.RouteShortName)
 }
 
-func Kbd(key string) string {
+func renderKbd(key string) string {
 	style := lipgloss.NewStyle().
 		MarginRight(1).
 		Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
@@ -85,29 +87,28 @@ func Kbd(key string) string {
 	return style.Render(key)
 }
 
-func NewModel(stations []gtfs.Stop, routes []gtfs.Route, height int) Model {
+func NewModel(stations []gtfs.Stop, routes []gtfs.Route) Model {
 	items := []list.Item{}
 	for _, station := range stations {
 		routeBadges := []string{}
 		for _, route := range routes {
 			if _, exists := station.RouteIds[route.RouteId]; exists {
-				routeBadges = append(routeBadges, RouteBadge(route))
+				routeBadges = append(routeBadges, renderRouteBadge(route))
 			}
 		}
 		routeBadgesStr := lipgloss.JoinHorizontal(lipgloss.Left, routeBadges...)
 		items = append(items, item{station: station, routeBadges: routeBadgesStr})
 	}
 
-	list := list.New(items, list.NewDefaultDelegate(), 0, 0)
-	list.SetWidth(40)
-	list.SetHeight(height)
+	list := list.New(items, list.NewDefaultDelegate(), width, 0)
+	list.SetWidth(width)
 
 	list.SetShowPagination(false)
 	list.SetShowHelp(false)
 	list.SetShowStatusBar(false)
 
 	list.Styles.TitleBar = lipgloss.NewStyle().
-		Width(40).
+		Width(width).
 		Padding(0, 1).
 		MarginBottom(1).
 		Border(lipgloss.RoundedBorder()).
@@ -117,7 +118,7 @@ func NewModel(stations []gtfs.Stop, routes []gtfs.Route, height int) Model {
 		UnsetBackground().
 		Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
 
-	list.FilterInput.Prompt = Kbd("/")
+	list.FilterInput.Prompt = renderKbd("/")
 	list.FilterInput.Placeholder = "Search Stations"
 	list.FilterInput.TextStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
