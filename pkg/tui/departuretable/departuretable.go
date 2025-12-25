@@ -17,13 +17,27 @@ type Model struct {
 	table table.Model
 }
 
+func (m *Model) SetDepartures(departures []gtfs.Departure) {
+	rows := []table.Row{}
+	for _, dep := range departures {
+		departureTime := time.Unix(dep.Time, 0)
+		r := table.Row{dep.RouteId, dep.FinalStopId, departureTime.Format("15:04:05")}
+		rows = append(rows, r)
+	}
+	m.table.SetRows(rows)
+}
+
+func (m *Model) SetHeight(height int) {
+	m.table.SetHeight(height - 3)
+}
+
 func (m *Model) Init() tea.Cmd { return nil }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.table.SetHeight(msg.Height-3)
+		m.SetHeight(msg.Height)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -46,23 +60,15 @@ func (m *Model) View() string {
 	return baseStyle.Render(m.table.View()) + "\n"
 }
 
-func NewModel(departures []gtfs.Departure) Model {
+func NewModel() Model {
 	columns := []table.Column{
 		{Title: "Route", Width: 5},
 		{Title: "Destination", Width: 40},
 		{Title: "Departs In", Width: 15},
 	}
 
-	rows := []table.Row{}
-	for _, dep := range departures {
-		departureTime := time.Unix(dep.Time, 0)
-		r := table.Row{dep.RouteId, dep.FinalStopId, departureTime.Format("15:04:05")}
-		rows = append(rows, r)
-	}
-
 	t := table.New(
 		table.WithColumns(columns),
-		table.WithRows(rows),
 		table.WithFocused(true),
 	)
 

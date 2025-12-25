@@ -31,6 +31,7 @@ func NewModel() model {
 	return model{
 		scheduleLoading: true,
 		realtimeLoading: true,
+		departureTable: departuretable.NewModel(),
 	}
 }
 
@@ -45,8 +46,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.width, m.height = msg.Width, msg.Height
+		m.departureTable.SetHeight(m.height)
 	case gotScheduleMsg:
 		m.schedule = gtfs.Schedule(msg)
 		m.stations = m.schedule.GetStations()
@@ -55,19 +56,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.scheduleLoading = false
 	case gotRealtimeMsg:
 		m.realtime = []gtfs.RealtimeFeed(msg)
-		m.departures = gtfs.FindDepartures([]string{"635N"}, m.realtime)
-		m.departureTable = departuretable.NewModel(m.departures)
-		m.departureTable.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 		m.realtimeLoading = false
 	case stationlist.StationSelectedMsg:
 		station := gtfs.Stop(msg)
 		m.selectedStation = station
 		// Update departure table with new station's departures
 		if !m.realtimeLoading {
-			stopIds := []string{station.StopId+"N", station.StopId+"S"}
+			stopIds := []string{station.StopId + "N", station.StopId + "S"}
 			m.departures = gtfs.FindDepartures(stopIds, m.realtime)
-			m.departureTable = departuretable.NewModel(m.departures)
-			m.departureTable.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+			m.departureTable.SetDepartures(m.departures)
 		}
 	}
 
