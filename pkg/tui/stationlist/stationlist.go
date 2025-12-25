@@ -1,4 +1,4 @@
-package tui
+package stationlist
 
 import (
 	"nyct-feed/pkg/gtfs"

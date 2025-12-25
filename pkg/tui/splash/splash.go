@@ -1,4 +1,4 @@
-package tui
+package splash
 
 import (
 	tea "github.com/charmbracelet/bubbletea"

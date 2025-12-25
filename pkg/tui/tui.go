@@ -3,12 +3,12 @@ package tui
 import (
 	"time"
 
-	"nyct-feed/pkg/gtfs"
-	splash "nyct-feed/pkg/tui/splash"
-	stationlist "nyct-feed/pkg/tui/stationlist"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"nyct-feed/pkg/gtfs"
+	"nyct-feed/pkg/tui/splash"
+	"nyct-feed/pkg/tui/stationlist"
 )
 
 type model struct {
