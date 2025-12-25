@@ -7,15 +7,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"nyct-feed/pkg/gtfs"
+	"nyct-feed/pkg/tui/departuretable"
 	"nyct-feed/pkg/tui/splash"
 	"nyct-feed/pkg/tui/stationlist"
 )
 
 type model struct {
-	schedule    gtfs.Schedule
-	stations    []gtfs.Stop
-	stationList stationlist.Model
-	loading     bool
+	schedule       gtfs.Schedule
+	stations       []gtfs.Stop
+	stationList    stationlist.Model
+	departureTable departuretable.Model
+	loading        bool
 
 	width  int
 	height int
@@ -41,8 +43,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gotScheduleMsg:
 		m.schedule = gtfs.Schedule(msg)
 		m.stations = m.schedule.GetStations()
+
 		m.stationList = stationlist.NewModel(m.stations, m.schedule.Routes)
 		m.stationList.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+
+		m.departureTable = departuretable.NewModel()
+		
 		m.loading = false
 	}
 
@@ -63,7 +69,7 @@ func (m *model) View() string {
 			Align(lipgloss.Center, lipgloss.Center).
 			Render(splash.Model{}.View())
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Left, m.stationList.View())
+	return lipgloss.JoinHorizontal(lipgloss.Left, m.stationList.View(), m.departureTable.View())
 }
 
 type gotScheduleMsg gtfs.Schedule
