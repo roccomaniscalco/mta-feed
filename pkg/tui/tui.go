@@ -16,6 +16,7 @@ type model struct {
 	schedule        gtfs.Schedule
 	scheduleLoading bool
 	stations        []gtfs.Stop
+	selectedStation gtfs.Stop
 	realtime        []gtfs.RealtimeFeed
 	realtimeLoading bool
 	departures      []gtfs.Departure
@@ -56,22 +57,40 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.realtime = []gtfs.RealtimeFeed(msg)
 		m.departures = gtfs.FindDepartures([]string{"635N"}, m.realtime)
 		m.departureTable = departuretable.NewModel(m.departures)
+		m.departureTable.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 		m.realtimeLoading = false
+	case stationlist.StationSelectedMsg:
+		station := gtfs.Stop(msg)
+		m.selectedStation = station
+		// Update departure table with new station's departures
+		if !m.realtimeLoading {
+			stopIds := []string{station.StopId+"N", station.StopId+"S"}
+			m.departures = gtfs.FindDepartures(stopIds, m.realtime)
+			m.departureTable = departuretable.NewModel(m.departures)
+			m.departureTable.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+		}
 	}
+
+	// Update both components and batch their commands
+	var cmds []tea.Cmd
 
 	if !m.scheduleLoading {
 		updatedModel, cmd := m.stationList.Update(msg)
 		m.stationList = *updatedModel.(*stationlist.Model)
-		return m, cmd
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
 
-	// if !m.realtimeLoading {
-	// 	updatedModel, cmd := m.stationList.Update(msg)
-	// 	m.stationList = *updatedModel.(*stationlist.Model)
-	// 	return m, cmd
-	// }
+	if !m.realtimeLoading {
+		updatedModel, cmd := m.departureTable.Update(msg)
+		m.departureTable = *updatedModel.(*departuretable.Model)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
 
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 func (m *model) View() string {

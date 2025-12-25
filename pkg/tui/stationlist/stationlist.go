@@ -10,6 +10,8 @@ import (
 
 const width = 40
 
+type StationSelectedMsg gtfs.Stop
+
 type item struct {
 	station     gtfs.Stop
 	routeBadges string
@@ -20,8 +22,7 @@ func (i item) Description() string { return i.routeBadges }
 func (i item) FilterValue() string { return i.station.StopName }
 
 type Model struct {
-	list         list.Model
-	selectedItem item
+	list list.Model
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -37,10 +38,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
 
-	// Keep a snapshot of the last selected item to preserve while filtering
+	// Emit selection change message when not filtering
 	if !m.list.SettingFilter() {
 		if item, ok := m.list.SelectedItem().(item); ok {
-			m.selectedItem = item
+			cmd = tea.Batch(cmd, func() tea.Msg {
+				return StationSelectedMsg(item.station)
+			})
 		}
 	}
 
@@ -126,7 +129,6 @@ func NewModel(stations []gtfs.Stop, routes []gtfs.Route) Model {
 		Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
 
 	return Model{
-		list:         list,
-		selectedItem: items[0].(item),
+		list: list,
 	}
 }

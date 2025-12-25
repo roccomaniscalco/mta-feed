@@ -17,11 +17,13 @@ type Model struct {
 	table table.Model
 }
 
-func (m Model) Init() tea.Cmd { return nil }
+func (m *Model) Init() tea.Cmd { return nil }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.table.SetHeight(msg.Height-3)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -30,8 +32,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.table.Focus()
 			}
-		case "q", "ctrl+c":
-			return m, tea.Quit
 		case "enter":
 			return m, tea.Batch(
 				tea.Printf("Let's go to %s!", m.table.SelectedRow()[1]),
@@ -42,7 +42,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	return baseStyle.Render(m.table.View()) + "\n"
 }
 
@@ -64,7 +64,6 @@ func NewModel(departures []gtfs.Departure) Model {
 		table.WithColumns(columns),
 		table.WithRows(rows),
 		table.WithFocused(true),
-		table.WithHeight(7),
 	)
 
 	s := table.DefaultStyles()
