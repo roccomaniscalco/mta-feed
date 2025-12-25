@@ -1,19 +1,22 @@
 package tui
 
 import (
+	"time"
+
 	"nyct-feed/pkg/gtfs"
 	splash "nyct-feed/pkg/tui/splash"
-	"time"
+	stationlist "nyct-feed/pkg/tui/stationlist"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
-	docStyle lipgloss.Style
-	schedule gtfs.Schedule
-	stations []gtfs.Stop
-	loading  bool
+	docStyle    lipgloss.Style
+	schedule    gtfs.Schedule
+	stations    []gtfs.Stop
+	stationList stationlist.Model
+	loading     bool
 }
 
 func NewModel() model {
@@ -37,22 +40,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		h, v := m.docStyle.GetFrameSize()
 		m.docStyle = m.docStyle.Width(msg.Width - h).Height(msg.Height - v)
 	case gotScheduleMsg:
+		listHeight := m.docStyle.GetHeight() - m.docStyle.GetVerticalMargins()
 		m.schedule = gtfs.Schedule(msg)
 		m.stations = m.schedule.GetStations()
+		m.stationList = stationlist.NewModel(m.stations, m.schedule.Routes, listHeight)
 		m.loading = false
 	}
 
-	var cmd tea.Cmd
-	return m, cmd
+	if m.loading == false {
+		updatedModel, cmd := m.stationList.Update(msg)
+    m.stationList = updatedModel.(stationlist.Model)
+		return m, cmd
+	}
+
+	return m, nil
 }
 
 func (m model) View() string {
 	if m.loading {
-	return m.docStyle.
-		Align(lipgloss.Center, lipgloss.Center).
-		Render(splash.Model{}.View())
+		return m.docStyle.
+			Align(lipgloss.Center, lipgloss.Center).
+			Render(splash.Model{}.View())
 	}
-	return "loaded!"
+	return m.docStyle.Render(m.stationList.View())
 }
 
 type gotScheduleMsg gtfs.Schedule
