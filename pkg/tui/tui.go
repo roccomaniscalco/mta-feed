@@ -13,22 +13,28 @@ import (
 )
 
 type model struct {
-	schedule       gtfs.Schedule
-	stations       []gtfs.Stop
-	stationList    stationlist.Model
-	departureTable departuretable.Model
-	loading        bool
+	schedule        gtfs.Schedule
+	scheduleLoading bool
+	stations        []gtfs.Stop
+	realtime        []gtfs.RealtimeFeed
+	realtimeLoading bool
+	departures      []gtfs.Departure
+	stationList     stationlist.Model
+	departureTable  departuretable.Model
 
 	width  int
 	height int
 }
 
 func NewModel() model {
-	return model{loading: true}
+	return model{
+		scheduleLoading: true,
+		realtimeLoading: true,
+	}
 }
 
 func (m *model) Init() tea.Cmd {
-	return getSchedule()
+	return tea.Batch(getSchedule(), getRealtime())
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -43,26 +49,33 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gotScheduleMsg:
 		m.schedule = gtfs.Schedule(msg)
 		m.stations = m.schedule.GetStations()
-
 		m.stationList = stationlist.NewModel(m.stations, m.schedule.Routes)
 		m.stationList.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
-
-		m.departureTable = departuretable.NewModel()
-		
-		m.loading = false
+		m.scheduleLoading = false
+	case gotRealtimeMsg:
+		m.realtime = []gtfs.RealtimeFeed(msg)
+		m.departures = gtfs.FindDepartures([]string{"635N"}, m.realtime)
+		m.departureTable = departuretable.NewModel(m.departures)
+		m.realtimeLoading = false
 	}
 
-	if m.loading == false {
+	if !m.scheduleLoading {
 		updatedModel, cmd := m.stationList.Update(msg)
 		m.stationList = *updatedModel.(*stationlist.Model)
 		return m, cmd
 	}
 
+	// if !m.realtimeLoading {
+	// 	updatedModel, cmd := m.stationList.Update(msg)
+	// 	m.stationList = *updatedModel.(*stationlist.Model)
+	// 	return m, cmd
+	// }
+
 	return m, nil
 }
 
 func (m *model) View() string {
-	if m.loading {
+	if m.scheduleLoading || m.realtimeLoading {
 		return lipgloss.NewStyle().
 			Width(m.width).
 			Height(m.height).
@@ -79,5 +92,15 @@ func getSchedule() tea.Cmd {
 		time.Sleep(500 * time.Millisecond)
 		schedule := gtfs.GetSchedule()
 		return gotScheduleMsg(schedule)
+	}
+}
+
+type gotRealtimeMsg []gtfs.RealtimeFeed
+
+func getRealtime() tea.Cmd {
+	return func() tea.Msg {
+		time.Sleep(500 * time.Millisecond)
+		feeds := gtfs.FetchFeeds()
+		return gotRealtimeMsg(feeds)
 	}
 }

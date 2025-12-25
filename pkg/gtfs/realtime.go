@@ -25,9 +25,13 @@ var feedUrls = [8]string{
 	"https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si",
 }
 
+type RealtimeFeed struct {
+	*gtfs.FeedMessage
+}
+
 // Fetch realtime GTFS feeds for all lines concurrently
-func FetchFeeds() ([]*gtfs.FeedMessage, error) {
-	feeds := make([]*gtfs.FeedMessage, len(feedUrls))
+func FetchFeeds() []RealtimeFeed {
+	feeds := make([]RealtimeFeed, len(feedUrls))
 	var g errgroup.Group
 
 	for i, feedUrl := range feedUrls {
@@ -39,15 +43,15 @@ func FetchFeeds() ([]*gtfs.FeedMessage, error) {
 				return err
 			}
 
-			feeds[i] = feed
+			feeds[i] = RealtimeFeed{feed}
 			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, err
+		log.Panicf("failed to fetch feeds: %v", err)
 	}
-	return feeds, nil
+	return feeds
 }
 
 func fetchFeed(feedUrl string) (*gtfs.FeedMessage, error) {

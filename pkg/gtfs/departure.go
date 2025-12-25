@@ -5,8 +5,6 @@ import (
 	"maps"
 	"slices"
 	"time"
-
-	"nyct-feed/proto/gtfs"
 )
 
 type Departure struct {
@@ -19,7 +17,7 @@ type Departure struct {
 	Delay         int32
 }
 
-func FindDepartures(stopIds []string, feeds []*gtfs.FeedMessage) []Departure {
+func FindDepartures(stopIds []string, feeds []RealtimeFeed) []Departure {
 	departures := []Departure{}
 
 	for _, stopId := range stopIds {
