@@ -24,6 +24,7 @@ type Schedule struct {
 	Trips     []Trip     `file:"trips.txt"`
 	Routes    []Route    `file:"routes.txt"`
 	Shapes    []Shape    `file:"shapes.txt"`
+	Transfers []Transfer `file:"transfers.txt"`
 }
 
 type Stop struct {
@@ -73,6 +74,13 @@ type Shape struct {
 	ShapePtLon float64 `csv:"shape_pt_lon"`
 }
 
+type Transfer struct {
+	FromStopId      string `csv:"from_stop_id"`
+	ToStopId        string `csv:"to_stop_id"`
+	TransferType    int    `csv:"transfer_type"`     // 2 = has min transfer time
+	MinTransferTime int    `csv:"min_transfer_time"` // seconds
+}
+
 // GetStations returns a subset of Stops that are considered to be stations.
 // Each Stop returned includes a set of RouteIds that pass through the station.
 func (s *Schedule) GetStations() []Stop {
@@ -105,6 +113,36 @@ func (s *Schedule) GetStations() []Stop {
 	}
 
 	return stations
+}
+
+// {
+// 	a:[ a,b,c ]
+// 	b:[ a,b,c ]
+// 	c:[ a,b,c,d ]
+// }
+
+func (s *Schedule) PrintTransfers() {
+	stopIdToName := s.GetStopIdToName()
+
+	connectedStopIds := map[string][]string{}
+	for _, t := range s.Transfers {
+		if t.FromStopId != t.ToStopId {
+			connectedStopIds[t.FromStopId] = append(connectedStopIds[t.FromStopId], t.ToStopId)
+			delete(connectedStopIds, t.ToStopId)
+		}
+	}
+
+	for stopId, connectedStopIds := range connectedStopIds {
+		connectedStopIds = append(connectedStopIds, stopId)
+
+		connectedStopNames := []string{}
+		for _, connectedStopId := range connectedStopIds {
+			connectedStopNames = append(connectedStopNames, stopIdToName[connectedStopId])
+		}
+
+		log.Printf("%v", connectedStopIds)
+		log.Printf("%v", connectedStopNames)
+	}
 }
 
 func (s *Schedule) GetStopIdToName() map[string]string {
@@ -167,6 +205,8 @@ func GetSchedule() Schedule {
 			schedule.Routes = parseCSV(bytes, Route{})
 		case reflect.TypeOf(Shape{}):
 			schedule.Shapes = parseCSV(bytes, Shape{})
+		case reflect.TypeOf(Transfer{}):
+			schedule.Transfers = parseCSV(bytes, Transfer{})
 		}
 	}
 

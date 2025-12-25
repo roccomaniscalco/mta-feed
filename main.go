@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log"
-	"nyct-feed/pkg/tui"
+	"nyct-feed/pkg/gtfs"
+	// "log"
+	// "nyct-feed/pkg/tui"
 
-	tea "github.com/charmbracelet/bubbletea"
+	// tea "github.com/charmbracelet/bubbletea"
 )
 
 var stopIds = []string{
@@ -15,9 +16,12 @@ var stopIds = []string{
 }
 
 func main() {
-	m := tui.NewModel()
-	p := tea.NewProgram(&m, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
-		log.Fatalf("Error running program:", err)
-	}
+	// m := tui.NewModel()
+	// p := tea.NewProgram(&m, tea.WithAltScreen())
+	// if _, err := p.Run(); err != nil {
+	// 	log.Fatalf("Error running program:", err)
+	// }
+
+	schedule := gtfs.GetSchedule()
+	schedule.PrintTransfers()
 }
