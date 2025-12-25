@@ -119,6 +119,7 @@ func NewModel(stations []gtfs.Stop, routes []gtfs.Route) Model {
 		Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#777777"})
 
 	list.FilterInput.Prompt = renderKbd("/")
+	list.FilterInput.CharLimit = width - list.Styles.TitleBar.GetHorizontalFrameSize() - 1
 	list.FilterInput.Placeholder = "Search Stations"
 	list.FilterInput.TextStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#dddddd"})
