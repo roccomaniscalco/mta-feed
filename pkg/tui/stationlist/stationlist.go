@@ -106,6 +106,7 @@ func NewModel(stations []gtfs.Stop, routes []gtfs.Route) Model {
 	list.SetShowPagination(false)
 	list.SetShowHelp(false)
 	list.SetShowStatusBar(false)
+	list.DisableQuitKeybindings()
 
 	list.Styles.TitleBar = lipgloss.NewStyle().
 		Width(width).
