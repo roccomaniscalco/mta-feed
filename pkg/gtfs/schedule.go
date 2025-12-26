@@ -115,6 +115,14 @@ func (s *Schedule) GetStopIdToName() map[string]string {
 	return stopIdToName
 }
 
+func (s *Schedule) GetRouteIdToRoute() map[string]Route {
+	routeIdToRoute := make(map[string]Route)
+	for _, route := range s.Routes {
+		routeIdToRoute[route.RouteId] = route
+	}
+	return routeIdToRoute
+}
+
 // GetSchedule returns a GTFS schedule containing all schedule files.
 // The schedule zip file is requested and stored when missing or stale.
 // The schedule files are read and parsed from storage.

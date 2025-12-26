@@ -5,13 +5,16 @@ import (
 )
 
 type Departure struct {
-	RouteId       string
+	Route         Route
 	FinalStopId   string
 	FinalStopName string
 	Times         []int64
 }
 
-func FindDepartures(stopIds []string, feeds []RealtimeFeed, stopIdToName map[string]string) []Departure {
+func FindDepartures(stopIds []string, feeds []RealtimeFeed, schedule Schedule) []Departure {
+	stopIdToName := schedule.GetStopIdToName()
+	routeIdToRoute := schedule.GetRouteIdToRoute()
+
 	tripToTimes := map[[2]string][]int64{}
 
 	for _, stopId := range stopIds {
@@ -37,7 +40,7 @@ func FindDepartures(stopIds []string, feeds []RealtimeFeed, stopIdToName map[str
 		routeId, finalStopId := tripKey[0], tripKey[1]
 		slices.Sort(times)
 		departures = append(departures, Departure{
-			RouteId:       routeId,
+			Route:         routeIdToRoute[routeId],
 			FinalStopId:   finalStopId,
 			FinalStopName: stopIdToName[finalStopId],
 			Times:         times,

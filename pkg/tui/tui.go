@@ -103,8 +103,7 @@ func (m *model) syncDeparturesTable() {
 	if !m.realtimeLoading && !m.scheduleLoading {
 		stationId := m.selectedStationId
 		stopIds := []string{stationId + "N", stationId + "S"}
-		stopIdToName := m.schedule.GetStopIdToName()
-		m.departures = gtfs.FindDepartures(stopIds, m.realtime, stopIdToName)
+		m.departures = gtfs.FindDepartures(stopIds, m.realtime, m.schedule)
 		m.departureTable.SetDepartures(m.departures)
 	}
 }
