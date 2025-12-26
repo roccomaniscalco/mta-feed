@@ -9,8 +9,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
+var style = lipgloss.NewStyle().
+	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
 type Model struct {
@@ -21,7 +21,7 @@ func (m *Model) SetDepartures(departures []gtfs.Departure) {
 	rows := []table.Row{}
 	for _, dep := range departures {
 		departureTime := time.Unix(dep.Time, 0)
-		r := table.Row{dep.RouteId, dep.FinalStopId, departureTime.Format("15:04:05")}
+		r := table.Row{dep.RouteId, dep.FinalStopId, dep.FinalStopName, departureTime.Format("15:04:05")}
 		rows = append(rows, r)
 	}
 	m.table.SetRows(rows)
@@ -57,12 +57,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	return baseStyle.Render(m.table.View()) + "\n"
+	return style.Render(m.table.View()) + "\n"
 }
 
 func NewModel() Model {
 	columns := []table.Column{
 		{Title: "Route", Width: 5},
+		{Title: "Destination ID", Width: 5},
 		{Title: "Destination", Width: 40},
 		{Title: "Departs In", Width: 15},
 	}
@@ -78,6 +79,7 @@ func NewModel() Model {
 		BorderForeground(lipgloss.Color("240")).
 		BorderBottom(true).
 		Bold(false)
+	
 	s.Selected = s.Selected.
 		Foreground(lipgloss.Color("229")).
 		Background(lipgloss.Color("57")).

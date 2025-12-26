@@ -31,7 +31,7 @@ func NewModel() model {
 	return model{
 		scheduleLoading: true,
 		realtimeLoading: true,
-		departureTable: departuretable.NewModel(),
+		departureTable:  departuretable.NewModel(),
 	}
 }
 
@@ -63,7 +63,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update departure table with new station's departures
 		if !m.realtimeLoading {
 			stopIds := []string{station.StopId + "N", station.StopId + "S"}
-			m.departures = gtfs.FindDepartures(stopIds, m.realtime)
+			stopIdToName := m.schedule.GetStopIdToName()
+			m.departures = gtfs.FindDepartures(stopIds, m.realtime, stopIdToName)
 			m.departureTable.SetDepartures(m.departures)
 		}
 	}
