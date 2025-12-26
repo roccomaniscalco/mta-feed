@@ -2,6 +2,8 @@ package stationlist
 
 import (
 	"nyct-feed/pkg/gtfs"
+	"nyct-feed/pkg/tui/routebadge"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -75,17 +77,6 @@ func (m *Model) View() string {
 	return m.list.View()
 }
 
-func renderRouteBadge(route gtfs.Route) string {
-	style := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#"+route.RouteTextColor)).
-		Background(lipgloss.Color("#"+route.RouteColor)).
-		Bold(true).
-		Padding(0, 1).
-		MarginRight(1)
-
-	return style.Render(route.RouteShortName)
-}
-
 func renderKbd(key string) string {
 	style := lipgloss.NewStyle().
 		MarginRight(1).
@@ -97,14 +88,15 @@ func renderKbd(key string) string {
 func NewModel(stations []gtfs.Stop, routes []gtfs.Route) Model {
 	items := []list.Item{}
 	for _, station := range stations {
-		routeBadges := []string{}
+		routeBadges := strings.Builder{}
 		for _, route := range routes {
 			if _, exists := station.RouteIds[route.RouteId]; exists {
-				routeBadges = append(routeBadges, renderRouteBadge(route))
+				routeBadges.WriteString(routebadge.Render(route))
+				routeBadges.WriteString(" ")
 			}
 		}
-		routeBadgesStr := lipgloss.JoinHorizontal(lipgloss.Left, routeBadges...)
-		items = append(items, item{station: station, routeBadges: routeBadgesStr})
+
+		items = append(items, item{station: station, routeBadges: routeBadges.String()})
 	}
 
 	list := list.New(items, list.NewDefaultDelegate(), width, 0)
