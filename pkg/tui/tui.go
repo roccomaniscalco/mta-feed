@@ -51,22 +51,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gotScheduleMsg:
 		m.schedule = gtfs.Schedule(msg)
 		m.stations = m.schedule.GetStations()
+		m.selectedStationId = m.stations[0].StopId
 		m.stationList = stationlist.NewModel(m.stations, m.schedule.Routes)
 		m.stationList.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 		m.scheduleLoading = false
+		m.syncDeparturesTable()
 	case gotRealtimeMsg:
 		m.realtime = []gtfs.RealtimeFeed(msg)
 		m.realtimeLoading = false
+		m.syncDeparturesTable()
 	case stationlist.StationSelectedMsg:
 		stationId := string(msg)
 		m.selectedStationId = stationId
-		// Update departure table with new station's departures
-		if !m.realtimeLoading {
-			stopIds := []string{stationId + "N", stationId + "S"}
-			stopIdToName := m.schedule.GetStopIdToName()
-			m.departures = gtfs.FindDepartures(stopIds, m.realtime, stopIdToName)
-			m.departureTable.SetDepartures(m.departures)
-		}
+		m.syncDeparturesTable()
 	}
 
 	// Update both components and batch their commands
@@ -100,6 +97,16 @@ func (m *model) View() string {
 			Render(splash.Model{}.View())
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Left, m.stationList.View(), m.departureTable.View())
+}
+
+func (m *model) syncDeparturesTable() {
+	if !m.realtimeLoading && !m.scheduleLoading {
+		stationId := m.selectedStationId
+		stopIds := []string{stationId + "N", stationId + "S"}
+		stopIdToName := m.schedule.GetStopIdToName()
+		m.departures = gtfs.FindDepartures(stopIds, m.realtime, stopIdToName)
+		m.departureTable.SetDepartures(m.departures)
+	}
 }
 
 type gotScheduleMsg gtfs.Schedule
