@@ -17,7 +17,7 @@ type model struct {
 	scheduleLoading   bool
 	stations          []gtfs.Stop
 	selectedStationId string
-	realtime          []gtfs.RealtimeFeed
+	realtime          []gtfs.FeedMessage
 	realtimeLoading   bool
 	departures        []gtfs.Departure
 	stationList       stationlist.Model
@@ -57,7 +57,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.scheduleLoading = false
 		m.syncDeparturesTable()
 	case gotRealtimeMsg:
-		m.realtime = []gtfs.RealtimeFeed(msg)
+		m.realtime = []gtfs.FeedMessage(msg)
 		m.realtimeLoading = false
 		m.syncDeparturesTable()
 	case stationlist.StationSelectedMsg:
@@ -118,7 +118,7 @@ func getSchedule() tea.Cmd {
 	}
 }
 
-type gotRealtimeMsg []gtfs.RealtimeFeed
+type gotRealtimeMsg []gtfs.FeedMessage
 
 func getRealtime() tea.Cmd {
 	return func() tea.Msg {

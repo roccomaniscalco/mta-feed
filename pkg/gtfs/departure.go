@@ -11,7 +11,7 @@ type Departure struct {
 	Times         []int64
 }
 
-func FindDepartures(stopIds []string, feeds []RealtimeFeed, schedule Schedule) []Departure {
+func FindDepartures(stopIds []string, feeds []FeedMessage, schedule Schedule) []Departure {
 	stopIdToName := schedule.GetStopIdToName()
 	routeIdToRoute := schedule.GetRouteIdToRoute()
 
