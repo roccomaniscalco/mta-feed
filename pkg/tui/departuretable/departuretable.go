@@ -20,7 +20,7 @@ type Model struct {
 func (m *Model) SetDepartures(departures []gtfs.Departure) {
 	rows := []table.Row{}
 	for _, dep := range departures {
-		departureTime := time.Unix(dep.Time, 0)
+		departureTime := time.Unix(dep.Times[0], 0)
 		r := table.Row{dep.RouteId, dep.FinalStopId, dep.FinalStopName, departureTime.Format("15:04:05")}
 		rows = append(rows, r)
 	}

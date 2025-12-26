@@ -13,15 +13,15 @@ import (
 )
 
 type model struct {
-	schedule        gtfs.Schedule
-	scheduleLoading bool
-	stations        []gtfs.Stop
-	selectedStation gtfs.Stop
-	realtime        []gtfs.RealtimeFeed
-	realtimeLoading bool
-	departures      []gtfs.Departure
-	stationList     stationlist.Model
-	departureTable  departuretable.Model
+	schedule          gtfs.Schedule
+	scheduleLoading   bool
+	stations          []gtfs.Stop
+	selectedStationId string
+	realtime          []gtfs.RealtimeFeed
+	realtimeLoading   bool
+	departures        []gtfs.Departure
+	stationList       stationlist.Model
+	departureTable    departuretable.Model
 
 	width  int
 	height int
@@ -58,11 +58,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.realtime = []gtfs.RealtimeFeed(msg)
 		m.realtimeLoading = false
 	case stationlist.StationSelectedMsg:
-		station := gtfs.Stop(msg)
-		m.selectedStation = station
+		stationId := string(msg)
+		m.selectedStationId = stationId
 		// Update departure table with new station's departures
 		if !m.realtimeLoading {
-			stopIds := []string{station.StopId + "N", station.StopId + "S"}
+			stopIds := []string{stationId + "N", stationId + "S"}
 			stopIdToName := m.schedule.GetStopIdToName()
 			m.departures = gtfs.FindDepartures(stopIds, m.realtime, stopIdToName)
 			m.departureTable.SetDepartures(m.departures)

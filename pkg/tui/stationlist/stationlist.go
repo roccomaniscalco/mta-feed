@@ -10,7 +10,7 @@ import (
 
 const width = 40
 
-type StationSelectedMsg gtfs.Stop
+type StationSelectedMsg string
 
 type item struct {
 	station     gtfs.Stop
@@ -22,7 +22,8 @@ func (i item) Description() string { return i.routeBadges }
 func (i item) FilterValue() string { return i.station.StopName }
 
 type Model struct {
-	list list.Model
+	selectedStationId string
+	list              list.Model
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -38,12 +39,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
 
-	// Emit selection change message when not filtering
-	if !m.list.SettingFilter() {
+	// Emit station selection change
+	if !m.list.SettingFilter() && m.list.SelectedItem() != nil {
 		if item, ok := m.list.SelectedItem().(item); ok {
-			cmd = tea.Batch(cmd, func() tea.Msg {
-				return StationSelectedMsg(item.station)
-			})
+			if item.station.StopId != m.selectedStationId {
+				m.selectedStationId = item.station.StopId
+				cmd = tea.Batch(cmd, func() tea.Msg {
+					return StationSelectedMsg(item.station.StopId)
+				})
+			}
 		}
 	}
 
